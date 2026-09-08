@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nodo/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Home muestra título Únete y feed de ideas', (tester) async {
+    await tester.pumpWidget(const NodoApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Únete'), findsOneWidget);
+    expect(
+      find.text('Explora ideas en crecimiento o siembra la tuya'),
+      findsOneWidget,
+    );
+    expect(find.text('TODAS'), findsOneWidget);
+    expect(find.text('Huerta urbana colaborativa'), findsOneWidget);
+    expect(find.text('Asistente de estudio con IA'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Filtrar por categoría actualiza el feed', (tester) async {
+    await tester.pumpWidget(const NodoApp());
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilterChip, 'TECNOLOGÍA'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Asistente de estudio con IA'), findsOneWidget);
+    expect(find.text('Huerta urbana colaborativa'), findsNothing);
   });
 }
