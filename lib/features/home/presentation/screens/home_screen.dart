@@ -1,28 +1,47 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_ideas.dart';
-import '../models/idea.dart';
-import '../theme/nodo_theme.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../../../core/theme/nodo_theme.dart';
+import '../viewmodels/home_view_model.dart';
 import '../widgets/category_filter.dart';
 import '../widgets/home_bottom_bar.dart';
 import '../widgets/idea_card.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.viewModel});
+
+  /// Permite inyectar un ViewModel en tests.
+  final HomeViewModel? viewModel;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _selectedCategory = 'TODAS';
-  int _navIndex = 0;
+  late final HomeViewModel _viewModel;
+  late final bool _ownsViewModel;
 
-  List<Idea> get _filteredIdeas {
-    if (_selectedCategory == 'TODAS') return kMockIdeas;
-    return kMockIdeas
-        .where((idea) => idea.category == _selectedCategory)
-        .toList();
+  @override
+  void initState() {
+    super.initState();
+    _ownsViewModel = widget.viewModel == null;
+    _viewModel =
+        widget.viewModel ?? ServiceLocator.instance.createHomeViewModel();
+    _viewModel.addListener(_onViewModelChanged);
+    _viewModel.load();
+  }
+
+  void _onViewModelChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _viewModel.removeListener(_onViewModelChanged);
+    if (_ownsViewModel) {
+      _viewModel.dispose();
+    }
+    super.dispose();
   }
 
   void _showMessage(String message) {
@@ -37,19 +56,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onNavTap(int index) {
-    setState(() => _navIndex = index);
+    _viewModel.selectNav(index);
     if (index == 1) {
       _showMessage('Perfil (próximamente)');
     }
   }
 
-  void _onCreateTap() {
-    _showMessage('Crear nueva idea (próximamente)');
-  }
-
   @override
   Widget build(BuildContext context) {
-    final ideas = _filteredIdeas;
+    final vm = _viewModel;
 
     return Scaffold(
       backgroundColor: NodoColors.background,
@@ -100,13 +115,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.only(top: 4, right: 4),
                     child: GestureDetector(
                       onTap: () {
-                        setState(() => _navIndex = 1);
+                        _viewModel.selectNav(1);
                         _showMessage('Perfil (próximamente)');
                       },
-                      child: CircleAvatar(
+                      child: const CircleAvatar(
                         radius: 18,
                         backgroundColor: NodoColors.primaryMuted,
-                        child: const Icon(
+                        child: Icon(
                           Icons.person_rounded,
                           size: 20,
                           color: NodoColors.primary,
@@ -118,43 +133,75 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            CategoryFilter(
-              categories: kIdeaCategories,
-              selected: _selectedCategory,
-              onSelected: (category) {
-                setState(() => _selectedCategory = category);
-              },
-            ),
+            if (vm.categories.isNotEmpty)
+              CategoryFilter(
+                categories: vm.categories,
+                selected: vm.selectedCategory,
+                onSelected: vm.selectCategory,
+              ),
             const SizedBox(height: 16),
-            Expanded(
-              child: ideas.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No hay ideas en esta categoría',
-                        style: TextStyle(color: NodoColors.textSecondary),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      itemCount: ideas.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) {
-                        final idea = ideas[index];
-                        return IdeaCard(
-                          idea: idea,
-                          onTap: () => showIdeaPreview(context, idea),
-                        );
-                      },
-                    ),
-            ),
+            Expanded(child: _buildBody(vm)),
           ],
         ),
       ),
       bottomNavigationBar: HomeBottomBar(
-        currentIndex: _navIndex,
+        currentIndex: vm.navIndex,
         onTap: _onNavTap,
-        onCreateTap: _onCreateTap,
+        onCreateTap: () => _showMessage('Crear nueva idea (próximamente)'),
       ),
+    );
+  }
+
+  Widget _buildBody(HomeViewModel vm) {
+    if (vm.status == HomeStatus.loading || vm.status == HomeStatus.initial) {
+      return const Center(
+        child: CircularProgressIndicator(color: NodoColors.primary),
+      );
+    }
+
+    if (vm.status == HomeStatus.error) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                vm.errorMessage ?? 'Error al cargar ideas',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: NodoColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: vm.load,
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (vm.ideas.isEmpty) {
+      return const Center(
+        child: Text(
+          'No hay ideas en esta categoría',
+          style: TextStyle(color: NodoColors.textSecondary),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+      itemCount: vm.ideas.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final idea = vm.ideas[index];
+        return IdeaCard(
+          idea: idea,
+          onTap: () => showIdeaPreview(context, idea),
+        );
+      },
     );
   }
 }

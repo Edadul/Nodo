@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:nodo/core/di/service_locator.dart';
 import 'package:nodo/main.dart';
 
 void main() {
+  setUp(() {
+    ServiceLocator.instance.reset();
+    ServiceLocator.instance.init();
+  });
+
   testWidgets('Home muestra título Únete y feed de ideas', (tester) async {
     await tester.pumpWidget(const NodoApp());
+    await tester.pumpAndSettle();
 
     expect(find.text('Únete'), findsOneWidget);
     expect(
@@ -19,6 +26,7 @@ void main() {
 
   testWidgets('Filtrar por categoría actualiza el feed', (tester) async {
     await tester.pumpWidget(const NodoApp());
+    await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilterChip, 'TECNOLOGÍA'));
     await tester.pumpAndSettle();

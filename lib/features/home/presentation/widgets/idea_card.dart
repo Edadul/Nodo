@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/idea.dart';
-import '../theme/nodo_theme.dart';
+import '../../../../core/theme/nodo_theme.dart';
+import '../../domain/entities/idea.dart';
 
 class IdeaCard extends StatelessWidget {
   const IdeaCard({
@@ -13,8 +13,13 @@ class IdeaCard extends StatelessWidget {
   final Idea idea;
   final VoidCallback onTap;
 
+  List<Color> get _gradientColors =>
+      idea.gradientColors.map(Color.new).toList(growable: false);
+
   @override
   Widget build(BuildContext context) {
+    final colors = _gradientColors;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -45,7 +50,7 @@ class IdeaCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: idea.gradient,
+                    colors: colors,
                   ),
                 ),
                 padding: const EdgeInsets.all(14),

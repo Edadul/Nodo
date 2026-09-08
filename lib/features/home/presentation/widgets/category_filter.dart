@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/nodo_theme.dart';
+import '../../../../core/theme/nodo_theme.dart';
 
 class CategoryFilter extends StatelessWidget {
   const CategoryFilter({

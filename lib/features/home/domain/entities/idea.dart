@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart';
-
+/// Entidad de dominio: sin dependencias de Flutter/UI.
 class Idea {
   const Idea({
     required this.id,
@@ -9,7 +8,7 @@ class Idea {
     required this.skills,
     required this.filledSpots,
     required this.totalSpots,
-    required this.gradient,
+    required this.gradientColors,
   });
 
   final String id;
@@ -19,7 +18,9 @@ class Idea {
   final List<String> skills;
   final int filledSpots;
   final int totalSpots;
-  final List<Color> gradient;
+
+  /// Colores ARGB del gradiente (presentación los convierte a [Color]).
+  final List<int> gradientColors;
 
   String get spotsLabel => '$filledSpots de $totalSpots cupos';
 }

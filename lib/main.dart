@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'screens/home_screen.dart';
-import 'theme/nodo_theme.dart';
-
-void main() {
-  runApp(const NodoApp());
-}
+import 'core/di/service_locator.dart';
+import 'core/theme/nodo_theme.dart';
+import 'features/home/presentation/screens/home_screen.dart';
 
 class NodoApp extends StatelessWidget {
   const NodoApp({super.key});
@@ -19,4 +16,9 @@ class NodoApp extends StatelessWidget {
       home: const HomeScreen(),
     );
   }
+}
+
+void main() {
+  ServiceLocator.instance.init();
+  runApp(const NodoApp());
 }
