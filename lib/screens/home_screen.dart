@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nodo/screens/profile_screen.dart';
 
 import '../data/mock_ideas.dart';
 import '../models/idea.dart';
@@ -39,7 +40,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onNavTap(int index) {
     setState(() => _navIndex = index);
     if (index == 1) {
-      _showMessage('Perfil (próximamente)');
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfileView()),
+      );
+      //_showMessage('Perfil (próximamente)');
     }
   }
 
