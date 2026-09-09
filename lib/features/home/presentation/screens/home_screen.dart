@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nodo/screens/profile_screen.dart';
+import './profile_screen.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/nodo_theme.dart';
@@ -176,10 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: const TextStyle(color: NodoColors.textSecondary),
               ),
               const SizedBox(height: 12),
-              FilledButton(
-                onPressed: vm.load,
-                child: const Text('Reintentar'),
-              ),
+              FilledButton(onPressed: vm.load, child: const Text('Reintentar')),
             ],
           ),
         ),

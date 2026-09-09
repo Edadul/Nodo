@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nodo/data/mock_profile.dart';
+import 'package:nodo/features/home/data/mock_profile.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({super.key});

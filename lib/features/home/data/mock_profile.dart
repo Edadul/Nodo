@@ -1,4 +1,4 @@
-import '../models/profile.dart';
+import '../../home/domain/entities/profile.dart';
 
 const Profile profile1 = Profile(
   name: 'Carlos Eduardo',
