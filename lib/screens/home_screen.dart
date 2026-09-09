@@ -44,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
         context,
         MaterialPageRoute(builder: (context) => ProfileView()),
       );
-      //_showMessage('Perfil (próximamente)');
     }
   }
 

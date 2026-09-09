@@ -24,6 +24,14 @@ class _ProfileViewState extends State<ProfileView> {
           Center(
             child: Column(
               children: [
+                //Back button
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                ),
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
