@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nodo/screens/profile_screen.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/nodo_theme.dart';
@@ -58,7 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onNavTap(int index) {
     _viewModel.selectNav(index);
     if (index == 1) {
-      _showMessage('Perfil (próximamente)');
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfileView()),
+      );
     }
   }
 

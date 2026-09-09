@@ -19,37 +19,46 @@ class HomeBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      child: Container(
-        height: 72,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: NodoColors.surface,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          Container(
+            height: 72,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.only(left: 40, right: 40),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(150),
+              color: NodoColors.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _NavItem(
-              icon: Icons.home_rounded,
-              selected: currentIndex == 0,
-              onTap: () => onTap(0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _NavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Inicio',
+                  selected: currentIndex == 0,
+                  onTap: () => onTap(0),
+                ),
+                _NavItem(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Perfil',
+                  selected: currentIndex == 1,
+                  onTap: () => onTap(1),
+                ),
+              ],
             ),
-            _CreateButton(onTap: onCreateTap),
-            _NavItem(
-              icon: Icons.person_outline_rounded,
-              selected: currentIndex == 1,
-              onTap: () => onTap(1),
-            ),
-          ],
-        ),
+          ),
+          Positioned(bottom: 50, child: _CreateButton(onTap: onCreateTap)),
+        ],
       ),
     );
   }
@@ -87,22 +96,36 @@ class _CreateButton extends StatelessWidget {
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.icon,
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
   final IconData icon;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(
-        icon,
-        color: selected ? NodoColors.primary : NodoColors.navInactive,
-        size: 28,
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          IconButton(
+            padding: EdgeInsets.zero,
+            onPressed: onTap,
+            icon: Icon(
+              icon,
+              color: selected ? NodoColors.primary : NodoColors.navInactive,
+              size: 28,
+            ),
+          ),
+          Text(label, style: TextStyle(fontSize: 12)),
+        ],
       ),
     );
   }
