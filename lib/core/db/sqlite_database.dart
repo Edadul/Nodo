@@ -22,7 +22,7 @@ class SQLiteDatabase implements IDatabase {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (Database db, int version) async {
         try {
           String script = await rootBundle.loadString('assets/init_script.sql');
@@ -35,6 +35,19 @@ class SQLiteDatabase implements IDatabase {
           }
         } catch (e) {
           throw Exception('database initialization script error: $e');
+        }
+      },
+      onUpgrade: (Database db, int oldVersion, int newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            "ALTER TABLE projects ADD COLUMN category TEXT NOT NULL DEFAULT 'TECNOLOGÍA'",
+          );
+          await db.execute(
+            'ALTER TABLE projects ADD COLUMN filled_spots INTEGER NOT NULL DEFAULT 0',
+          );
+          await db.execute(
+            'ALTER TABLE projects ADD COLUMN total_spots INTEGER NOT NULL DEFAULT 5',
+          );
         }
       },
     );
