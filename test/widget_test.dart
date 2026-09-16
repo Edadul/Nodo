@@ -3,14 +3,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nodo/core/di/service_locator.dart';
 import 'package:nodo/main.dart';
+import 'package:nodo/features/home/data/datasources/mock_idea_datasource.dart';
+import 'package:nodo/features/application/data/datasources/mock_application_datasource.dart';
 
 void main() {
   setUp(() {
+    // Hermético: inyectamos datasources en memoria (mismo patrón que
+    // home_get_ideas_test) para que el test de widgets no dependa de
+    // SQLite/FFI ni de IO real, evitando timeouts en pumpAndSettle.
     ServiceLocator.instance.reset();
-    ServiceLocator.instance.init();
+    ServiceLocator.instance.init(
+      ideaDataSourceOverride: MockIdeaDataSource(),
+      applicationDataSourceOverride: MockApplicationDataSource(),
+    );
   });
 
-  testWidgets('Home muestra título Únete y feed de ideas', (tester) async {
+  testWidgets('Home muestra título Únete y feed SQLite', (tester) async {
     await tester.pumpWidget(const NodoApp());
     await tester.pumpAndSettle();
 

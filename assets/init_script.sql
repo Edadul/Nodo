@@ -8,6 +8,16 @@ CREATE TABLE IF NOT EXISTS projects (
     total_spots INTEGER NOT NULL DEFAULT 5
 );
 
+CREATE TABLE IF NOT EXISTS applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    motivation TEXT NOT NULL,
+    skills TEXT NOT NULL,
+    experience TEXT NOT NULL,
+    submitted_at TEXT NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects (id)
+);
+
 INSERT INTO projects
     (title, description, required_skills, category, filled_spots, total_spots)
 VALUES

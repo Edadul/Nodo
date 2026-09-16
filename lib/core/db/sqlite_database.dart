@@ -22,7 +22,7 @@ class SQLiteDatabase implements IDatabase {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (Database db, int version) async {
         try {
           String script = await rootBundle.loadString('assets/init_script.sql');
@@ -49,6 +49,19 @@ class SQLiteDatabase implements IDatabase {
             'ALTER TABLE projects ADD COLUMN total_spots INTEGER NOT NULL DEFAULT 5',
           );
         }
+        if (oldVersion < 3) {
+          await db.execute(
+            'CREATE TABLE IF NOT EXISTS applications ('
+            'id INTEGER PRIMARY KEY AUTOINCREMENT,'
+            'project_id INTEGER NOT NULL,'
+            'motivation TEXT NOT NULL,'
+            'skills TEXT NOT NULL,'
+            'experience TEXT NOT NULL,'
+            'submitted_at TEXT NOT NULL,'
+            'FOREIGN KEY (project_id) REFERENCES projects (id)'
+            ')',
+          );
+        }
       },
     );
   }
@@ -62,9 +75,9 @@ class SQLiteDatabase implements IDatabase {
   }
 
   @override
-  Future<void> insertData(String table, Map<String, dynamic> data) async {
+  Future<int> insertData(String table, Map<String, dynamic> data) async {
     final db = await database;
-    await db.insert(
+    return await db.insert(
       table,
       data,
       conflictAlgorithm: ConflictAlgorithm.replace,
