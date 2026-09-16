@@ -3,6 +3,7 @@ import './profile_screen.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/nodo_theme.dart';
+import '../../../application/presentation/screens/project_detail_screen.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/category_filter.dart';
 import '../widgets/home_bottom_bar.dart';
@@ -200,7 +201,14 @@ class _HomeScreenState extends State<HomeScreen> {
         final idea = vm.ideas[index];
         return IdeaCard(
           idea: idea,
-          onTap: () => showIdeaPreview(context, idea),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProjectDetailScreen(idea: idea),
+              ),
+            );
+          },
         );
       },
     );
