@@ -22,7 +22,7 @@ class SQLiteDatabase implements IDatabase {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (Database db, int version) async {
         try {
           String script = await rootBundle.loadString('assets/init_script.sql');
@@ -62,6 +62,29 @@ class SQLiteDatabase implements IDatabase {
             ')',
           );
         }
+        if (oldVersion < 4) {
+          await db.execute(
+            "ALTER TABLE applications ADD COLUMN applicant_name TEXT NOT NULL DEFAULT ''",
+          );
+          await db.execute(
+            "ALTER TABLE applications ADD COLUMN applicant_program TEXT NOT NULL DEFAULT ''",
+          );
+          await db.execute(
+            "ALTER TABLE applications ADD COLUMN applicant_university TEXT NOT NULL DEFAULT ''",
+          );
+          await db.execute(
+            'ALTER TABLE applications ADD COLUMN avatar_url TEXT',
+          );
+          await db.execute(
+            "ALTER TABLE applications ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'",
+          );
+          await db.execute(
+            'ALTER TABLE applications ADD COLUMN attachment_name TEXT',
+          );
+          await db.execute(
+            'ALTER TABLE applications ADD COLUMN attachment_size_label TEXT',
+          );
+        }
       },
     );
   }
@@ -82,5 +105,15 @@ class SQLiteDatabase implements IDatabase {
       data,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  @override
+  Future<void> updateData(
+    String table,
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final db = await database;
+    await db.update(table, data, where: 'id = ?', whereArgs: [id]);
   }
 }

@@ -12,6 +12,13 @@ import '../../features/application/data/repositories/application_repository_impl
 import '../../features/application/domain/repositories/application_repository.dart';
 import '../../features/application/domain/usecases/submit_application.dart';
 import '../../features/application/presentation/viewmodels/application_view_model.dart';
+import '../../features/applicants/data/datasources/applicant_datasource.dart';
+import '../../features/applicants/data/datasources/sqlite_applicant_datasource.dart';
+import '../../features/applicants/data/repositories/applicant_repository_impl.dart';
+import '../../features/applicants/domain/repositories/applicant_repository.dart';
+import '../../features/applicants/domain/usecases/get_applicants.dart';
+import '../../features/applicants/domain/usecases/update_applicant_status.dart';
+import '../../features/applicants/presentation/viewmodels/applicants_view_model.dart';
 
 /// Contenedor de dependencias simple (sin paquetes externos).
 /// Para cambiar de BD: registra otro [IdeaDataSource] en [init].
@@ -27,6 +34,10 @@ final class ServiceLocator {
   ApplicationDataSource? _applicationDataSource;
   ApplicationRepository? _applicationRepository;
   SubmitApplication? _submitApplication;
+  ApplicantDataSource? _applicantDataSource;
+  ApplicantRepository? _applicantRepository;
+  GetApplicants? _getApplicants;
+  UpdateApplicantStatus? _updateApplicantStatus;
 
   IdeaDataSource get ideaDataSource => _require(_ideaDataSource, 'ideaDataSource');
   IdeaRepository get ideaRepository => _require(_ideaRepository, 'ideaRepository');
@@ -38,12 +49,20 @@ final class ServiceLocator {
       _require(_applicationRepository, 'applicationRepository');
   SubmitApplication get submitApplication =>
       _require(_submitApplication, 'submitApplication');
+  ApplicantDataSource get applicantDataSource =>
+      _require(_applicantDataSource, 'applicantDataSource');
+  ApplicantRepository get applicantRepository =>
+      _require(_applicantRepository, 'applicantRepository');
+  GetApplicants get getApplicants => _require(_getApplicants, 'getApplicants');
+  UpdateApplicantStatus get updateApplicantStatus =>
+      _require(_updateApplicantStatus, 'updateApplicantStatus');
 
   bool get isInitialized => _ideaRepository != null;
 
   void init({
     IdeaDataSource? ideaDataSourceOverride,
     ApplicationDataSource? applicationDataSourceOverride,
+    ApplicantDataSource? applicantDataSourceOverride,
   }) {
     _ideaDataSource =
       ideaDataSourceOverride ?? SQLiteIdeaDataSource(SQLiteDatabase());
@@ -56,6 +75,13 @@ final class ServiceLocator {
       SQLiteApplicationDataSource(SQLiteDatabase());
     _applicationRepository = ApplicationRepositoryImpl(_applicationDataSource!);
     _submitApplication = SubmitApplication(_applicationRepository!);
+
+    _applicantDataSource =
+      applicantDataSourceOverride ??
+      SQLiteApplicantDataSource(SQLiteDatabase());
+    _applicantRepository = ApplicantRepositoryImpl(_applicantDataSource!);
+    _getApplicants = GetApplicants(_applicantRepository!);
+    _updateApplicantStatus = UpdateApplicantStatus(_applicantRepository!);
   }
 
   /// Útil en tests para re-registrar dependencias.
@@ -67,6 +93,10 @@ final class ServiceLocator {
     _applicationDataSource = null;
     _applicationRepository = null;
     _submitApplication = null;
+    _applicantDataSource = null;
+    _applicantRepository = null;
+    _getApplicants = null;
+    _updateApplicantStatus = null;
   }
 
   HomeViewModel createHomeViewModel() {
@@ -78,6 +108,14 @@ final class ServiceLocator {
 
   ApplicationViewModel createApplicationViewModel() {
     return ApplicationViewModel(submitApplication: submitApplication);
+  }
+
+  ApplicantsViewModel createApplicantsViewModel(int projectId) {
+    return ApplicantsViewModel(
+      getApplicants: getApplicants,
+      updateApplicantStatus: updateApplicantStatus,
+      projectId: projectId,
+    );
   }
 
   T _require<T>(T? value, String name) {
