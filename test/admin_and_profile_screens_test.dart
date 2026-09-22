@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:nodo/core/di/service_locator.dart';
+import 'package:provider/provider.dart';
+import 'package:nodo/core/db/roble_database.dart';
 import 'package:nodo/core/theme/nodo_theme.dart';
 import 'package:nodo/features/applicants/data/datasources/mock_applicant_datasource.dart';
 import 'package:nodo/features/application/presentation/screens/project_detail_admin_screen.dart';
@@ -9,25 +10,45 @@ import 'package:nodo/features/home/data/datasources/mock_idea_datasource.dart';
 import 'package:nodo/features/home/domain/entities/idea.dart';
 import 'package:nodo/features/home/presentation/screens/profile_screen.dart';
 
+import 'package:nodo/features/home/data/repositories/idea_repository_impl.dart';
+import 'package:nodo/features/home/domain/usecases/get_ideas.dart';
+import 'package:nodo/features/applicants/data/repositories/applicant_repository_impl.dart';
+import 'package:nodo/features/applicants/domain/usecases/get_applicants.dart';
+import 'package:nodo/features/applicants/domain/usecases/update_applicant_status.dart';
+import 'package:nodo/features/applicants/presentation/viewmodels/applicants_view_model.dart';
+
 Widget _wrap(Widget child) {
-  return MaterialApp(
-    theme: buildNodoTheme(),
-    home: child,
+  // Home deps
+  final mockIdeaDataSource = MockIdeaDataSource();
+  final ideaRepository = IdeaRepositoryImpl(mockIdeaDataSource);
+  final getIdeas = GetIdeas(ideaRepository);
+
+  // Applicants deps
+  final mockApplicantDataSource = MockApplicantDataSource();
+  final applicantRepository = ApplicantRepositoryImpl(mockApplicantDataSource);
+  final getApplicants = GetApplicants(applicantRepository);
+  final updateApplicantStatus = UpdateApplicantStatus(applicantRepository);
+
+  return MultiProvider(
+    providers: [
+      Provider<GetIdeas>.value(value: getIdeas),
+      Provider<ApplicantsViewModel Function(int)>.value(
+        value: (int projectId) => ApplicantsViewModel(
+          projectId: projectId,
+          getApplicants: getApplicants,
+          updateApplicantStatus: updateApplicantStatus,
+        ),
+      ),
+    ],
+    child: MaterialApp(
+      theme: buildNodoTheme(),
+      home: child,
+    ),
   );
 }
 
 void main() {
-  setUp(() {
-    ServiceLocator.instance.reset();
-    ServiceLocator.instance.init(
-      ideaDataSourceOverride: MockIdeaDataSource(),
-      applicantDataSourceOverride: MockApplicantDataSource(),
-    );
-  });
 
-  tearDown(() {
-    ServiceLocator.instance.reset();
-  });
 
   const testIdea = Idea(
     id: '1',

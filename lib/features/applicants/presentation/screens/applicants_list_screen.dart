@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../domain/entities/applicant.dart';
 import '../../domain/entities/applicant_status.dart';
@@ -48,7 +48,7 @@ class _ApplicantsListScreenState extends State<ApplicantsListScreen> {
     super.initState();
     _ownsViewModel = widget.viewModel == null;
     _viewModel = widget.viewModel ??
-        ServiceLocator.instance.createApplicantsViewModel(widget.projectId);
+        context.read<ApplicantsViewModel Function(int)>()(widget.projectId);
     _viewModel.addListener(_onViewModelChanged);
     _viewModel.load();
   }

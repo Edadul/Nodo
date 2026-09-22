@@ -42,6 +42,16 @@ class Roble implements IDatabase {
   }
 
   @override
+  Future<void> update(String tableName, String id, Map<String, dynamic> data) async {
+    try {
+      await robleDatabase.update(tableName, id, data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // === Stub methods to maintain compilation during migration ===
+  @override
   Future<List<Map<String, dynamic>>> queryTable(String table) async {
     // Stub to maintain compilation during migration
     return [];

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../../../core/di/service_locator.dart';
+import '../../domain/usecases/get_ideas.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
 import '../../../application/presentation/screens/project_detail_admin_screen.dart';
@@ -30,7 +31,7 @@ class _ProfileViewState extends State<ProfileView> {
 
   Future<void> _loadMyProjects() async {
     try {
-      final ideas = await ServiceLocator.instance.getIdeas();
+      final ideas = await context.read<GetIdeas>()();
       if (mounted) {
         setState(() {
           _myProjects = ideas.take(3).toList();
