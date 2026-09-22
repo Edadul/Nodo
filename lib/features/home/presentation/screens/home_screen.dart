@@ -121,7 +121,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: GestureDetector(
                       onTap: () {
                         _viewModel.selectNav(1);
-                        _showMessage('Perfil (próximamente)');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ProfileView()),
+                        );
                       },
                       child: const CircleAvatar(
                         radius: 18,
