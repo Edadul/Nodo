@@ -5,16 +5,12 @@ class ProjectService {
 
   ProjectService(this._database);
 
-  Future<List<Map<String, dynamic>>> fetchAllProjects() async {
+  Future<List<Map<String, dynamic>>> fetchProjects() async {
     try {
-      // TODO: validations, logic, etc. should be added here
-      return await _database.queryTable('projects');
+      return await _database.read('project');
     } catch (e) {
-      throw Exception('query failed: $e');
+      print('Error fetching projects: $e');
+      rethrow;
     }
-  }
-
-  Future<void> postNewProject(Map<String, dynamic> projectData) async {
-    await _database.insertData('projects', projectData);
   }
 }

@@ -1,7 +1,7 @@
+import "package:provider/provider.dart";
 import 'package:flutter/material.dart';
 import './profile_screen.dart';
 
-import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../application/presentation/screens/project_detail_screen.dart';
 import '../viewmodels/home_view_model.dart';
@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _ownsViewModel = widget.viewModel == null;
     _viewModel =
-        widget.viewModel ?? ServiceLocator.instance.createHomeViewModel();
+        widget.viewModel ?? context.read<HomeViewModel Function()>()();
     _viewModel.addListener(_onViewModelChanged);
     _viewModel.load();
   }
