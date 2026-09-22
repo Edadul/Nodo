@@ -1,6 +1,6 @@
+import "package:provider/provider.dart";
 import 'package:flutter/material.dart';
 
-import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../home/domain/entities/idea.dart';
 import '../viewmodels/application_view_model.dart';
@@ -41,7 +41,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
     super.initState();
     _ownsViewModel = widget.viewModel == null;
     _viewModel = widget.viewModel ??
-        ServiceLocator.instance.createApplicationViewModel();
+        context.read<ApplicationViewModel Function()>()();
     _viewModel.addListener(_onViewModelChanged);
   }
 

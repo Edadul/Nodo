@@ -2,8 +2,8 @@ import '../../../../core/db/db_interface.dart';
 import '../../domain/entities/idea.dart';
 import 'idea_datasource.dart';
 
-class SQLiteIdeaDataSource implements IdeaDataSource {
-  SQLiteIdeaDataSource(this._database);
+class ApiIdeaDataSource implements IdeaDataSource {
+  ApiIdeaDataSource(this._database);
 
   final IDatabase _database;
 
@@ -17,7 +17,7 @@ class SQLiteIdeaDataSource implements IdeaDataSource {
 
   @override
   Future<List<Idea>> fetchIdeas({String? category}) async {
-    final rows = await _database.queryTable('projects');
+    final rows = await _database.read('project');
     return rows.map(_toIdea).where((idea) {
       return category == null || category == 'TODAS' || idea.category == category;
     }).toList(growable: false);
@@ -25,7 +25,7 @@ class SQLiteIdeaDataSource implements IdeaDataSource {
 
   @override
   Future<List<String>> fetchCategories() async {
-    final rows = await _database.queryTable('projects');
+    final rows = await _database.read('project');
     final categories = rows
         .map((row) => _text(row['category'], fallback: 'TECNOLOGÍA'))
         .toSet()
@@ -36,7 +36,7 @@ class SQLiteIdeaDataSource implements IdeaDataSource {
 
   @override
   Future<Idea> insertIdea(Idea idea) async {
-    await _database.insertData('projects', {
+    await _database.insert('project', {
       'title': idea.title,
       'description': idea.description,
       'required_skills': idea.skills.join(', '),
@@ -44,7 +44,8 @@ class SQLiteIdeaDataSource implements IdeaDataSource {
       'filled_spots': idea.filledSpots,
       'total_spots': idea.totalSpots,
     });
-    return idea;
+    // Note: If result contains the new ID, we could map it, but for now we just return the idea
+    return idea; // Replace with updated Idea if ID is returned
   }
 
   Idea _toIdea(Map<String, dynamic> row) {

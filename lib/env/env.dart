@@ -9,4 +9,10 @@ abstract class Env {
 
   @EnviedField(varName: 'CONTRACT_ID', obfuscate: true)
   static final String contractId = _Env.contractId;
+
+  @EnviedField(varName: 'GUEST_EMAIL')
+  static final String guestEmail = _Env.guestEmail;
+
+  @EnviedField(varName: 'GUEST_PASSWORD', obfuscate: true)
+  static final String guestPassword = _Env.guestPassword;
 }
