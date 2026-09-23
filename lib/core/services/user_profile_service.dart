@@ -9,9 +9,20 @@ class UserProfileService {
 
   final IDatabase _database;
 
+  /// Ids ya confirmados en `users` durante esta sesión. Crear un proyecto o
+  /// postular repite esta comprobación cada vez; sin caché, cada una es una
+  /// petición de red de sobra porque la fila, una vez creada, no vuelve a
+  /// desaparecer.
+  final Set<String> _confirmedIds = {};
+
   Future<void> ensureProfile(User user) async {
+    if (_confirmedIds.contains(user.id)) return;
+
     final rows = await _database.read('users', filters: {'id': user.id});
-    if (rows.isNotEmpty) return;
+    if (rows.isNotEmpty) {
+      _confirmedIds.add(user.id);
+      return;
+    }
 
     await _database.insert('users', {
       'id': user.id,
@@ -19,6 +30,7 @@ class UserProfileService {
       'name': user.name.trim().isEmpty ? 'Usuario' : user.name.trim(),
       'created_at': DateTime.now().toUtc().toIso8601String(),
     });
+    _confirmedIds.add(user.id);
   }
 
   Future<String> _availableUsername(String email) async {
