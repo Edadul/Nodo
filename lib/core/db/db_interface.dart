@@ -1,5 +1,5 @@
 abstract class IDatabase {
-  Future<List<Map<String, dynamic>>> read(String tableName);
+  Future<List<Map<String, dynamic>>> read(String tableName, {Map<String, dynamic>? filters});
   Future<Map<String, dynamic>> insert(String tableName, Map<String, dynamic> data);
   Future<void> update(String tableName, String id, Map<String, dynamic> data);
 

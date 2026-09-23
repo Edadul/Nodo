@@ -17,7 +17,7 @@ class ApiIdeaDataSource implements IdeaDataSource {
 
   @override
   Future<List<Idea>> fetchIdeas({String? category}) async {
-    final rows = await _database.read('project');
+    final rows = await _database.read('projects');
     return rows.map(_toIdea).where((idea) {
       return category == null || category == 'TODAS' || idea.category == category;
     }).toList(growable: false);
@@ -25,7 +25,7 @@ class ApiIdeaDataSource implements IdeaDataSource {
 
   @override
   Future<List<String>> fetchCategories() async {
-    final rows = await _database.read('project');
+    final rows = await _database.read('projects');
     final categories = rows
         .map((row) => _text(row['category'], fallback: 'TECNOLOGÍA'))
         .toSet()
@@ -36,7 +36,7 @@ class ApiIdeaDataSource implements IdeaDataSource {
 
   @override
   Future<Idea> insertIdea(Idea idea) async {
-    await _database.insert('project', {
+    await _database.insert('projects', {
       'title': idea.title,
       'description': idea.description,
       'required_skills': idea.skills.join(', '),
@@ -64,6 +64,7 @@ class ApiIdeaDataSource implements IdeaDataSource {
           .toList(growable: false),
       filledSpots: _number(row['filled_spots']),
       totalSpots: _number(row['total_spots'], fallback: 5),
+      creatorId: _text(row['creator_id']),
       gradientColors: _gradientColors[colorIndex],
     );
   }

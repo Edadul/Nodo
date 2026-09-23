@@ -1,9 +1,11 @@
-import "package:provider/provider.dart";
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import './profile_screen.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../application/presentation/screens/project_detail_screen.dart';
+import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/category_filter.dart';
 import '../widgets/home_bottom_bar.dart';
@@ -22,6 +24,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final HomeViewModel _viewModel;
   late final bool _ownsViewModel;
+  AuthViewModel? _auth;
 
   @override
   void initState() {
@@ -31,15 +34,24 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.viewModel ?? context.read<HomeViewModel Function()>()();
     _viewModel.addListener(_onViewModelChanged);
     _viewModel.load();
+
+    _auth = context.read<AuthViewModel?>();
+    _auth?.addListener(_onAuthChanged);
+    _auth?.loadCurrentUser();
   }
 
   void _onViewModelChanged() {
     if (mounted) setState(() {});
   }
 
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _viewModel.removeListener(_onViewModelChanged);
+    _auth?.removeListener(_onAuthChanged);
     if (_ownsViewModel) {
       _viewModel.dispose();
     }
@@ -60,16 +72,25 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onNavTap(int index) {
     _viewModel.selectNav(index);
     if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ProfileView()),
-      );
+      _openProfileOrLogin();
     }
+  }
+
+  void _openProfileOrLogin() {
+    final auth = _auth;
+    final Widget destination = (auth == null || auth.isPublicSession)
+        ? const LoginScreen()
+        : const ProfileView();
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final vm = _viewModel;
+    final bool showProfileIcon = _auth?.isPublicSession == false;
 
     return Scaffold(
       backgroundColor: NodoColors.background,
@@ -116,27 +137,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: NodoColors.textPrimary,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, right: 4),
-                    child: GestureDetector(
-                      onTap: () {
-                        _viewModel.selectNav(1);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ProfileView()),
-                        );
-                      },
-                      child: const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: NodoColors.primaryMuted,
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 20,
-                          color: NodoColors.primary,
+                  if (showProfileIcon)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, right: 4),
+                      child: GestureDetector(
+                        onTap: _openProfileOrLogin,
+                        child: const CircleAvatar(
+                          radius: 18,
+                          backgroundColor: NodoColors.primaryMuted,
+                          child: Icon(
+                            Icons.person_rounded,
+                            size: 20,
+                            color: NodoColors.primary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

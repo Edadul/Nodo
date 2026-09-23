@@ -6,11 +6,6 @@ class ProjectService {
   ProjectService(this._database);
 
   Future<List<Map<String, dynamic>>> fetchProjects() async {
-    try {
-      return await _database.read('project');
-    } catch (e) {
-      print('Error fetching projects: $e');
-      rethrow;
-    }
+    return await _database.read('projects');
   }
 }

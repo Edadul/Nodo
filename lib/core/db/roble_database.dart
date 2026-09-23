@@ -22,9 +22,12 @@ class Roble implements IDatabase {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> read(String tableName) async {
+  Future<List<Map<String, dynamic>>> read(
+    String tableName, {
+    Map<String, dynamic>? filters,
+  }) async {
     try {
-      final response = await robleDatabase.read(tableName);
+      final response = await robleDatabase.read(tableName, filters: filters);
       return response;
     } catch (e) {
       rethrow;

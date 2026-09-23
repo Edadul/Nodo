@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 import '../db/db_interface.dart';
+import '../db/roble_database.dart';
 import '../services/project_service.dart';
 
 // Home
 import '../../features/home/data/datasources/api_idea_datasource.dart';
 import '../../features/home/data/repositories/idea_repository_impl.dart';
+import '../../features/home/data/repositories/profile_repository.dart';
 import '../../features/home/domain/usecases/get_ideas.dart';
 import '../../features/home/domain/usecases/get_categories.dart';
 import '../../features/home/presentation/viewmodels/home_view_model.dart';
@@ -25,6 +27,11 @@ import '../../features/applicants/domain/usecases/get_applicants.dart';
 import '../../features/applicants/domain/usecases/update_applicant_status.dart';
 import '../../features/applicants/presentation/viewmodels/applicants_view_model.dart';
 
+// Auth
+import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
+
 class CoreModule {
   static List<SingleChildWidget> get providers => [
         Provider<ProjectService>(
@@ -35,6 +42,9 @@ class CoreModule {
 
 class HomeModule {
   static List<SingleChildWidget> get providers => [
+        Provider<ProfileRepository>(
+          create: (context) => ProfileRepository(context.read<IDatabase>()),
+        ),
         Provider<ApiIdeaDataSource>(
           create: (context) => ApiIdeaDataSource(context.read<IDatabase>()),
         ),
@@ -124,6 +134,13 @@ class AppModule extends StatelessWidget {
         ...HomeModule.providers,
         ...ApplicationModule.providers,
         ...ApplicantsModule.providers,
+        Provider<AuthRepository>(
+          create: (_) => AuthRepositoryImpl(Roble.robleDatabase),
+        ),
+        ChangeNotifierProvider<AuthViewModel>(
+          create: (context) =>
+              AuthViewModel(repository: context.read<AuthRepository>()),
+        ),
       ],
       child: child,
     );
