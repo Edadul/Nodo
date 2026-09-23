@@ -36,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.read<AuthViewModel>();
+    final vm = context.watch<AuthViewModel>();
 
     return Scaffold(
       backgroundColor: NodoColors.primary,

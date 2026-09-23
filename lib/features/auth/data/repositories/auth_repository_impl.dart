@@ -69,6 +69,7 @@ class AuthRepositoryImpl implements AuthRepository {
           : (profile.email.isNotEmpty ? profile.email : 'Usuario'),
       email: profile.email,
       avatarUrl: _text(extra['avatar']) ?? _text(userMap['avatar']) ?? '',
+      isGuest: profile.email == Env.guestEmail || profile.role == 'readonly',
     );
   }
 

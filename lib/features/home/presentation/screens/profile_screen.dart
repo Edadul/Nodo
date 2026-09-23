@@ -8,6 +8,7 @@ import '../../domain/usecases/get_ideas.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
 import '../../../application/presentation/screens/project_detail_admin_screen.dart';
+import '../../../project_creation/presentation/screens/create_project_screen.dart';
 import '../../data/mock_profile.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/entities/idea.dart';
@@ -37,25 +38,31 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   void initState() {
     super.initState();
-    _loadMyProjects();
-    _loadUserProfile();
+    _load();
+  }
+
+  /// El perfil primero: los proyectos se filtran con el usuario de la sesión.
+  Future<void> _load() async {
+    await _loadUserProfile();
+    await _loadMyProjects();
   }
 
   Future<void> _loadMyProjects() async {
+    final creatorId = _auth?.signedInUser?.id;
+    // En sesión pública nadie es dueño de nada: no hay proyectos que
+    // administrar.
+    if (creatorId == null) {
+      if (mounted) setState(() => _isLoadingProjects = false);
+      return;
+    }
+
     try {
       final ideas = await context.read<GetIdeas>()();
       if (mounted) {
-        // En sesión pública mostramos ideas de ejemplo (sin filtrar por
-        // creador, el invitado no es dueño de nada). Cuando hay una cuenta
-        // real autenticada, solo enseñamos sus proyectos: `projects.creator_id`
-        // → `users.id` → el mismo id que trae la sesión.
-        final isPublic = _auth?.isPublicSession ?? true;
-        final creatorId = _auth?.currentUser?.id;
-        final myProjects = isPublic || creatorId == null || creatorId.isEmpty
-            ? ideas.take(3).toList()
-            : ideas
-                .where((idea) => idea.creatorId == creatorId)
-                .toList(growable: false);
+        // `projects.creator_id` → `users.id` → el mismo id de la sesión.
+        final myProjects = ideas
+            .where((idea) => idea.isCreatedBy(creatorId))
+            .toList(growable: false);
         setState(() {
           _myProjects = myProjects;
           _isLoadingProjects = false;
@@ -132,23 +139,38 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
-  void _openAdminDetail(Idea idea) {
-    Navigator.push(
+  Future<void> _openAdminDetail(Idea idea) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ProjectDetailAdminScreen(idea: idea),
       ),
     );
+    if (mounted) _loadMyProjects();
   }
 
-  void _openApplicants(Idea idea) {
-    final projectId = int.tryParse(idea.id) ?? 1;
-    Navigator.push(
+  Future<void> _openApplicants(Idea idea) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ApplicantsListScreen(projectId: projectId),
+        builder: (_) => ApplicantsListScreen(projectId: idea.id),
       ),
     );
+    // Aceptar postulaciones cambia los cupos ocupados.
+    if (mounted) _loadMyProjects();
+  }
+
+  Future<void> _openCreateProject() async {
+    final created = await Navigator.push<Idea>(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateProjectScreen()),
+    );
+    if (!mounted || created == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Proyecto "${created.title}" publicado')),
+    );
+    setState(() => _isLoadingProjects = true);
+    await _loadMyProjects();
   }
 
   @override
@@ -535,23 +557,24 @@ class _ProfileViewState extends State<ProfileView> {
                 color: NodoColors.navInactive,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Aún no has creado ningún proyecto',
-                style: TextStyle(
+              Text(
+                _isPublicSession
+                    ? 'Inicia sesión para crear y administrar proyectos'
+                    : 'Aún no has creado ningún proyecto',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
                   color: NodoColors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Crear proyecto')),
-                  );
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Crear Proyecto'),
-              ),
+              if (!_isPublicSession) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: _openCreateProject,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Crear Proyecto'),
+                ),
+              ],
             ],
           ),
         ),
@@ -564,6 +587,11 @@ class _ProfileViewState extends State<ProfileView> {
           _buildProjectCard(idea),
           const SizedBox(height: 14),
         ],
+        OutlinedButton.icon(
+          onPressed: _openCreateProject,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Crear otro proyecto'),
+        ),
       ],
     );
   }
@@ -651,9 +679,11 @@ class _ProfileViewState extends State<ProfileView> {
                                   color: NodoColors.chipInactive,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Text(
-                                  'En desarrollo',
-                                  style: TextStyle(
+                                child: Text(
+                                  idea.isFull
+                                      ? 'Cupos completos'
+                                      : '${idea.availableSpots} cupos libres',
+                                  style: const TextStyle(
                                     fontSize: 10.5,
                                     fontWeight: FontWeight.w700,
                                     color: NodoColors.textSecondary,

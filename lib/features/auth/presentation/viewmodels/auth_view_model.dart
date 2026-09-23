@@ -23,18 +23,21 @@ class AuthViewModel extends ChangeNotifier {
 
   /// `true` cuando la sesión activa es la pública (invitado) o no hay sesión.
   bool get isPublicSession =>
-      _currentUser == null || _currentUser!.email == Env.guestEmail;
+      _currentUser == null ||
+      _currentUser!.isGuest ||
+      _currentUser!.email == Env.guestEmail;
+
+  /// Usuario con cuenta propia, o `null` en sesión pública.
+  User? get signedInUser => isPublicSession ? null : _currentUser;
 
   void setEmail(String v) {
     email = v.trim();
     _clearError();
-    notifyListeners();
   }
 
   void setPassword(String v) {
     password = v;
     _clearError();
-    notifyListeners();
   }
 
   Future<void> loadCurrentUser() async {

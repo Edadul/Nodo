@@ -7,18 +7,8 @@ class ProfileRepository {
   ProfileRepository(this._database);
 
   Future<Profile?> fetchByUserId(String userId) async {
-    for (final column in ['_id', 'id']) {
-      try {
-        final rows =
-            await _database.read('users', filters: {column: userId});
-        if (rows.isNotEmpty) {
-          return _toProfile(rows.first);
-        }
-      } catch (_) {
-        // Si la columna no existe o no hay permisos, se prueba con la otra.
-      }
-    }
-    return null;
+    final rows = await _database.read('users', filters: {'id': userId});
+    return rows.isEmpty ? null : _toProfile(rows.first);
   }
 
   Profile _toProfile(Map<String, dynamic> row) {

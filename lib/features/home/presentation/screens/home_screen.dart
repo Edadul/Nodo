@@ -6,6 +6,8 @@ import '../../../../core/theme/nodo_theme.dart';
 import '../../../application/presentation/screens/project_detail_screen.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../project_creation/presentation/screens/create_project_screen.dart';
+import '../../domain/entities/idea.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/category_filter.dart';
 import '../widgets/home_bottom_bar.dart';
@@ -69,22 +71,43 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onNavTap(int index) {
+  Future<void> _onNavTap(int index) async {
     _viewModel.selectNav(index);
-    if (index == 1) {
-      _openProfileOrLogin();
-    }
+    if (index != 1) return;
+    await _openProfileOrLogin();
+    if (mounted) _viewModel.selectNav(0);
   }
 
-  void _openProfileOrLogin() {
+  Future<void> _openProfileOrLogin() async {
     final auth = _auth;
     final Widget destination = (auth == null || auth.isPublicSession)
         ? const LoginScreen()
         : const ProfileView();
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => destination),
     );
+    // Crear o gestionar proyectos desde el perfil cambia el feed.
+    if (mounted && destination is ProfileView) _viewModel.load();
+  }
+
+  Future<void> _onCreateTap() async {
+    if (_auth?.isPublicSession ?? true) {
+      _showMessage('Inicia sesión para crear un proyecto');
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      if (!mounted || (_auth?.isPublicSession ?? true)) return;
+    }
+
+    final created = await Navigator.push<Idea>(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateProjectScreen()),
+    );
+    if (!mounted || created == null) return;
+    _showMessage('Proyecto "${created.title}" publicado');
+    _viewModel.load();
   }
 
   @override
@@ -171,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: HomeBottomBar(
         currentIndex: vm.navIndex,
         onTap: _onNavTap,
-        onCreateTap: () => _showMessage('Crear nueva idea (próximamente)'),
+        onCreateTap: _onCreateTap,
       ),
     );
   }

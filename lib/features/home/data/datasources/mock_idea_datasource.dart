@@ -2,12 +2,15 @@ import '../../domain/entities/idea.dart';
 import 'idea_datasource.dart';
 
 /// Implementación temporal en memoria.
-/// Se reemplaza por Hive/Supabase sin tocar presentation ni domain.
+/// Se usa en tests de widgets en lugar de Roble.
 class MockIdeaDataSource implements IdeaDataSource {
   MockIdeaDataSource({List<Idea>? seed})
       : _ideas = List<Idea>.from(seed ?? _defaultIdeas);
 
   final List<Idea> _ideas;
+
+  /// Creador de las tres primeras ideas de ejemplo.
+  static const demoCreatorId = 'demo-user';
 
   static const List<String> _categories = [
     'TODAS',
@@ -20,10 +23,11 @@ class MockIdeaDataSource implements IdeaDataSource {
   static const List<Idea> _defaultIdeas = [
     Idea(
       id: '1',
+      creatorId: demoCreatorId,
       title: 'Huerta urbana colaborativa',
       description:
           'Buscamos estudiantes para diseñar y construir una huerta comunitaria en el campus.',
-      category: 'SOCIAL',
+      categories: ['SOCIAL'],
       skills: ['DISEÑO/UX', 'GESTIÓN'],
       filledSpots: 3,
       totalSpots: 6,
@@ -31,10 +35,11 @@ class MockIdeaDataSource implements IdeaDataSource {
     ),
     Idea(
       id: '2',
+      creatorId: demoCreatorId,
       title: 'Asistente de estudio con IA',
       description:
           'Plataforma web que resume apuntes y genera quizzes con procesamiento de lenguaje.',
-      category: 'TECNOLOGÍA',
+      categories: ['TECNOLOGÍA'],
       skills: ['BACKEND', 'DATOS'],
       filledSpots: 2,
       totalSpots: 5,
@@ -42,10 +47,11 @@ class MockIdeaDataSource implements IdeaDataSource {
     ),
     Idea(
       id: '3',
+      creatorId: demoCreatorId,
       title: 'Marca local de productos upcycled',
       description:
           'Crear identidad y prototipos de packaging para una línea de moda con materiales reutilizados.',
-      category: 'DISEÑO',
+      categories: ['DISEÑO'],
       skills: ['BRANDING', 'PRODUCTO'],
       filledSpots: 1,
       totalSpots: 4,
@@ -56,7 +62,7 @@ class MockIdeaDataSource implements IdeaDataSource {
       title: 'Marketplace de freelancers universitarios',
       description:
           'Conectar talento del campus con microencargos reales de empresas locales.',
-      category: 'NEGOCIOS',
+      categories: ['NEGOCIOS'],
       skills: ['PRODUCTO', 'GROWTH'],
       filledSpots: 4,
       totalSpots: 7,
@@ -67,7 +73,7 @@ class MockIdeaDataSource implements IdeaDataSource {
       title: 'App de voluntariado por barrios',
       description:
           'Mapear necesidades locales y coordinar jornadas de ayuda entre vecinos y estudiantes.',
-      category: 'SOCIAL',
+      categories: ['SOCIAL'],
       skills: ['MÓVIL', 'COMUNIDAD'],
       filledSpots: 2,
       totalSpots: 6,
@@ -84,13 +90,7 @@ class MockIdeaDataSource implements IdeaDataSource {
       return List.unmodifiable(_ideas);
     }
     return List.unmodifiable(
-      _ideas.where((idea) => idea.category == category),
+      _ideas.where((idea) => idea.categories.contains(category)),
     );
-  }
-
-  @override
-  Future<Idea> insertIdea(Idea idea) async {
-    _ideas.insert(0, idea);
-    return idea;
   }
 }

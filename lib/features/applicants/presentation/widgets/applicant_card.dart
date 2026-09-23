@@ -18,8 +18,9 @@ class ApplicantCard extends StatelessWidget {
 
   final Applicant applicant;
   final VoidCallback onTap;
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
+  /// Null deshabilita el botón (guardando o sin cupos).
+  final VoidCallback? onAccept;
+  final VoidCallback? onReject;
 
   bool get _isPending => applicant.status == ApplicantStatus.pending;
 
@@ -141,12 +142,14 @@ class _QuickActionButton extends StatelessWidget {
   final String label;
   final Color backgroundColor;
   final Color textColor;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: backgroundColor,
+      color: onPressed == null
+          ? backgroundColor.withValues(alpha: 0.45)
+          : backgroundColor,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),

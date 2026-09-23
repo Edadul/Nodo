@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/errors/failures.dart';
+import '../../../auth/domain/entities/user.dart';
 import '../../domain/entities/application.dart';
 import '../../domain/usecases/submit_application.dart';
 
@@ -14,34 +16,45 @@ class ApplicationViewModel extends ChangeNotifier {
   ApplicationStatus status = ApplicationStatus.idle;
   String? errorMessage;
 
+  bool _disposed = false;
+
   Future<Application?> submit({
-    required int projectId,
+    required String projectId,
     required String motivation,
     required List<String> skills,
     required String experience,
+    required User? applicant,
   }) async {
     status = ApplicationStatus.submitting;
     errorMessage = null;
-    notifyListeners();
+    _notify();
 
     try {
       final application = await _submitApplication(
-        Application(
-          projectId: projectId,
-          motivation: motivation.trim(),
-          skills: skills.map((skill) => skill.trim()).toList(growable: false),
-          experience: experience.trim(),
-          submittedAt: DateTime.now(),
-        ),
+        projectId: projectId,
+        motivation: motivation,
+        skills: skills,
+        experience: experience,
+        applicant: applicant,
       );
       status = ApplicationStatus.success;
-      notifyListeners();
+      _notify();
       return application;
     } catch (error) {
       status = ApplicationStatus.error;
-      errorMessage = error.toString();
-      notifyListeners();
+      errorMessage = friendlyErrorMessage(error);
+      _notify();
       return null;
     }
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

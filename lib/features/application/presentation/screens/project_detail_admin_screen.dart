@@ -21,13 +21,11 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
   List<Color> get _gradientColors =>
       widget.idea.gradientColors.map(Color.new).toList(growable: false);
 
-  int get _projectId => int.tryParse(widget.idea.id) ?? 1;
-
   void _navigateToApplicants() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ApplicantsListScreen(projectId: _projectId),
+        builder: (_) => ApplicantsListScreen(projectId: widget.idea.id),
       ),
     );
   }
