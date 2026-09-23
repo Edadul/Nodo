@@ -1,5 +1,5 @@
 import 'package:roble/roble.dart';
-import '../lib/env/env.dart';
+import 'package:nodo/env/env.dart';
 
 Future<void> main() async {
   final roble = RobleApiDataBase(
@@ -39,10 +39,22 @@ Future<void> main() async {
   }
 
   await probe('read users (no filter)', () => roble.read('users'));
-  await probe('read users filter _id', () => roble.read('users', filters: {'_id': id}));
-  await probe('read users filter id', () => roble.read('users', filters: {'id': id}));
-  await probe('read users filter _owner', () => roble.read('users', filters: {'_owner': id}));
-  await probe('read projects filter creator_id', () => roble.read('projects', filters: {'creator_id': id}));
+  await probe(
+    'read users filter _id',
+    () => roble.read('users', filters: {'_id': id}),
+  );
+  await probe(
+    'read users filter id',
+    () => roble.read('users', filters: {'id': id}),
+  );
+  await probe(
+    'read users filter _owner',
+    () => roble.read('users', filters: {'_owner': id}),
+  );
+  await probe(
+    'read projects filter creator_id',
+    () => roble.read('projects', filters: {'creator_id': id}),
+  );
   await probe('read projects (no filter)', () => roble.read('projects'));
 
   await roble.logout();

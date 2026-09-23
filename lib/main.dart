@@ -21,14 +21,9 @@ class NodoApp extends StatelessWidget {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   final database = Roble();
   await database.init();
 
-  runApp(
-    AppModule(
-      database: database,
-      child: const NodoApp(),
-    ),
-  );
+  runApp(AppModule(database: database, child: const NodoApp()));
 }
