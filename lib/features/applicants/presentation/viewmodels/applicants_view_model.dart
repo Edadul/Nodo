@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/errors/failures.dart';
+import '../../../auth/domain/entities/user.dart';
+import '../../../home/domain/entities/idea.dart';
 import '../../domain/entities/applicant.dart';
 import '../../domain/entities/applicant_status.dart';
+import '../../domain/usecases/decide_application.dart';
 import '../../domain/usecases/get_applicants.dart';
-import '../../domain/usecases/update_applicant_status.dart';
 
 enum ApplicantsStatus { initial, loading, ready, error }
 
@@ -13,20 +16,29 @@ enum ApplicantsFilter { all, pending, accepted, rejected }
 class ApplicantsViewModel extends ChangeNotifier {
   ApplicantsViewModel({
     required GetApplicants getApplicants,
-    required UpdateApplicantStatus updateApplicantStatus,
+    required DecideApplication decideApplication,
     required this.projectId,
-  }) : _getApplicants = getApplicants, // ignore: prefer_initializing_formals
-       _updateApplicantStatus = updateApplicantStatus; // ignore: prefer_initializing_formals
+    required this.actor,
+  })  : _getApplicants = getApplicants, // ignore: prefer_initializing_formals
+        _decideApplication = decideApplication; // ignore: prefer_initializing_formals
 
   final GetApplicants _getApplicants;
-  final UpdateApplicantStatus _updateApplicantStatus;
-  final int projectId;
+  final DecideApplication _decideApplication;
+  final String projectId;
+
+  /// Usuario que gestiona (debe ser el creador del proyecto).
+  final User? actor;
 
   ApplicantsStatus status = ApplicantsStatus.initial;
   ApplicantsFilter filter = ApplicantsFilter.all;
   String? errorMessage;
 
+  /// Estado del proyecto (cupos) según la BD.
+  Idea? project;
+
   List<Applicant> _applicants = const [];
+  final Set<String> _updating = {};
+  bool _disposed = false;
 
   List<Applicant> get applicants =>
       _applicants.where(_matchesFilter).toList(growable: false);
@@ -35,7 +47,12 @@ class ApplicantsViewModel extends ChangeNotifier {
   int countFor(ApplicantsFilter value) =>
       _applicants.where((applicant) => _matches(applicant, value)).length;
 
-  Applicant? findById(int applicantId) {
+  bool get isFull => project?.isFull ?? false;
+
+  /// `true` mientras se guarda la decisión sobre esa postulación.
+  bool isUpdating(String applicantId) => _updating.contains(applicantId);
+
+  Applicant? findById(String applicantId) {
     for (final applicant in _applicants) {
       if (applicant.id == applicantId) return applicant;
     }
@@ -45,47 +62,71 @@ class ApplicantsViewModel extends ChangeNotifier {
   Future<void> load() async {
     status = ApplicantsStatus.loading;
     errorMessage = null;
-    notifyListeners();
+    _notify();
 
     try {
-      _applicants = await _getApplicants(projectId: projectId);
+      final result = await _getApplicants(projectId: projectId, actor: actor);
+      project = result.project;
+      _applicants = result.applicants;
       status = ApplicantsStatus.ready;
     } catch (error) {
       status = ApplicantsStatus.error;
-      errorMessage = error.toString();
+      errorMessage = friendlyErrorMessage(error);
     }
 
-    notifyListeners();
+    _notify();
   }
 
   void selectFilter(ApplicantsFilter value) {
     if (value == filter) return;
     filter = value;
-    notifyListeners();
+    _notify();
   }
 
   Future<Applicant?> updateStatus(
-    int applicantId,
+    String applicantId,
     ApplicantStatus newStatus,
   ) async {
+    if (!_updating.add(applicantId)) return null;
+    errorMessage = null;
+    _notify();
+
     try {
-      final updated = await _updateApplicantStatus(
-        applicantId: applicantId,
-        status: newStatus,
+      final decision = await _decideApplication(
+        projectId: projectId,
+        applicationId: applicantId,
+        decision: newStatus,
+        actor: actor,
       );
-      final index = _applicants.indexWhere(
-        (applicant) => applicant.id == applicantId,
-      );
-      if (index != -1) {
-        _applicants = List<Applicant>.from(_applicants)
-          ..[index] = updated;
-      }
-      notifyListeners();
-      return updated;
+      project = decision.project;
+      _replace(decision.applicant);
+      return decision.applicant;
     } catch (error) {
-      errorMessage = error.toString();
-      notifyListeners();
+      errorMessage = friendlyErrorMessage(error);
+      // Si la BD cambió (resuelta en otro dispositivo, sin cupos), se recarga
+      // para mostrar el estado real.
+      if (error is ValidationFailure) await _refreshQuietly();
       return null;
+    } finally {
+      _updating.remove(applicantId);
+      _notify();
+    }
+  }
+
+  Future<void> _refreshQuietly() async {
+    try {
+      final result = await _getApplicants(projectId: projectId, actor: actor);
+      project = result.project;
+      _applicants = result.applicants;
+    } catch (_) {
+      // Se conserva la lista actual.
+    }
+  }
+
+  void _replace(Applicant updated) {
+    final index = _applicants.indexWhere((a) => a.id == updated.id);
+    if (index != -1) {
+      _applicants = List<Applicant>.from(_applicants)..[index] = updated;
     }
   }
 
@@ -102,5 +143,15 @@ class ApplicantsViewModel extends ChangeNotifier {
       case ApplicantsFilter.rejected:
         return applicant.status == ApplicantStatus.rejected;
     }
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

@@ -1,9 +1,13 @@
-import "package:provider/provider.dart";
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import './profile_screen.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../application/presentation/screens/project_detail_screen.dart';
+import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../project_creation/presentation/screens/create_project_screen.dart';
+import '../../domain/entities/idea.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/category_filter.dart';
 import '../widgets/home_bottom_bar.dart';
@@ -22,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final HomeViewModel _viewModel;
   late final bool _ownsViewModel;
+  AuthViewModel? _auth;
 
   @override
   void initState() {
@@ -31,15 +36,24 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.viewModel ?? context.read<HomeViewModel Function()>()();
     _viewModel.addListener(_onViewModelChanged);
     _viewModel.load();
+
+    _auth = context.read<AuthViewModel?>();
+    _auth?.addListener(_onAuthChanged);
+    _auth?.loadCurrentUser();
   }
 
   void _onViewModelChanged() {
     if (mounted) setState(() {});
   }
 
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _viewModel.removeListener(_onViewModelChanged);
+    _auth?.removeListener(_onAuthChanged);
     if (_ownsViewModel) {
       _viewModel.dispose();
     }
@@ -57,19 +71,49 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onNavTap(int index) {
+  Future<void> _onNavTap(int index) async {
     _viewModel.selectNav(index);
-    if (index == 1) {
-      Navigator.push(
+    if (index != 1) return;
+    await _openProfileOrLogin();
+    if (mounted) _viewModel.selectNav(0);
+  }
+
+  Future<void> _openProfileOrLogin() async {
+    final auth = _auth;
+    final Widget destination = (auth == null || auth.isPublicSession)
+        ? const LoginScreen()
+        : const ProfileView();
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+    );
+    // Crear o gestionar proyectos desde el perfil cambia el feed.
+    if (mounted && destination is ProfileView) _viewModel.load();
+  }
+
+  Future<void> _onCreateTap() async {
+    if (_auth?.isPublicSession ?? true) {
+      _showMessage('Inicia sesión para crear un proyecto');
+      await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ProfileView()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
+      if (!mounted || (_auth?.isPublicSession ?? true)) return;
     }
+
+    final created = await Navigator.push<Idea>(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateProjectScreen()),
+    );
+    if (!mounted || created == null) return;
+    _showMessage('Proyecto "${created.title}" publicado');
+    _viewModel.load();
   }
 
   @override
   Widget build(BuildContext context) {
     final vm = _viewModel;
+    final bool showProfileIcon = _auth?.isPublicSession == false;
 
     return Scaffold(
       backgroundColor: NodoColors.background,
@@ -116,27 +160,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: NodoColors.textPrimary,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, right: 4),
-                    child: GestureDetector(
-                      onTap: () {
-                        _viewModel.selectNav(1);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ProfileView()),
-                        );
-                      },
-                      child: const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: NodoColors.primaryMuted,
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 20,
-                          color: NodoColors.primary,
+                  if (showProfileIcon)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, right: 4),
+                      child: GestureDetector(
+                        onTap: _openProfileOrLogin,
+                        child: const CircleAvatar(
+                          radius: 18,
+                          backgroundColor: NodoColors.primaryMuted,
+                          child: Icon(
+                            Icons.person_rounded,
+                            size: 20,
+                            color: NodoColors.primary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -155,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: HomeBottomBar(
         currentIndex: vm.navIndex,
         onTap: _onNavTap,
-        onCreateTap: () => _showMessage('Crear nueva idea (próximamente)'),
+        onCreateTap: _onCreateTap,
       ),
     );
   }

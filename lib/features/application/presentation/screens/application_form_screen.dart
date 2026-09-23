@@ -1,8 +1,11 @@
-import "package:provider/provider.dart";
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/services/catalog_service.dart';
 import '../../../../core/theme/nodo_theme.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../home/domain/entities/idea.dart';
+import '../../domain/validation/application_rules.dart';
 import '../viewmodels/application_view_model.dart';
 import 'application_confirmation_screen.dart';
 
@@ -19,13 +22,6 @@ class ApplicationFormScreen extends StatefulWidget {
 }
 
 class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
-  static const List<String> _experienceLevels = [
-    'Sin experiencia previa',
-    'Menos de 1 año',
-    '1 a 2 años',
-    'Más de 2 años',
-  ];
-
   final _formKey = GlobalKey<FormState>();
   late final ApplicationViewModel _viewModel;
   late final bool _ownsViewModel;
@@ -60,13 +56,25 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
     super.dispose();
   }
 
+  String? _customSkillError;
+
   void _addCustomSkill() {
-    final skill = _customSkillController.text.trim();
-    if (skill.isEmpty) return;
+    final raw = _customSkillController.text;
+    final skill = CatalogService.normalize(raw);
+    String? error = CatalogService.validateName(raw);
+    if (error == null && _selectedSkills.contains(skill)) {
+      error = 'Ya está agregada';
+    }
+    if (error == null && _selectedSkills.length >= ApplicationRules.skillsMax) {
+      error = 'Máximo ${ApplicationRules.skillsMax} habilidades';
+    }
 
     setState(() {
-      _selectedSkills.add(skill);
-      _customSkillController.clear();
+      _customSkillError = error;
+      if (error == null) {
+        _selectedSkills.add(skill);
+        _customSkillController.clear();
+      }
     });
   }
 
@@ -74,10 +82,12 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedSkills.isEmpty) {
+    final skillsError =
+        validateApplicationSkills(_selectedSkills.toList(growable: false));
+    if (skillsError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecciona al menos una habilidad'),
+        SnackBar(
+          content: Text(skillsError),
           behavior: SnackBarBehavior.floating,
           backgroundColor: NodoColors.primaryDark,
         ),
@@ -85,12 +95,12 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
       return;
     }
 
-    final projectIdResult = int.tryParse(widget.idea.id);
     final application = await _viewModel.submit(
-      projectId: projectIdResult ?? 0,
+      projectId: widget.idea.id,
       motivation: _motivationController.text,
       skills: _selectedSkills.toList(growable: false),
       experience: _experience ?? '',
+      applicant: context.read<AuthViewModel?>()?.signedInUser,
     );
 
     if (!mounted) return;
@@ -146,16 +156,12 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
               TextFormField(
                 controller: _motivationController,
                 maxLines: 4,
+                maxLength: ApplicationRules.motivationMax,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: _inputDecoration(
                   hint: 'Cuéntanos por qué quieres unirte y qué aportarías',
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().length < 10) {
-                    return 'Escribe al menos 10 caracteres';
-                  }
-                  return null;
-                },
+                validator: (value) => validateMotivation(value ?? ''),
               ),
               const SizedBox(height: 24),
               const _SectionLabel('Habilidades que aportas'),
@@ -171,7 +177,8 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: widget.idea.skills.map((skill) {
+                children: {...widget.idea.skills, ..._selectedSkills}
+                    .map((skill) {
                   final isSelected = _selectedSkills.contains(skill);
                   return FilterChip(
                     label: Text(
@@ -185,13 +192,18 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
                     ),
                     selected: isSelected,
                     showCheckmark: false,
-                    onSelected: (_) {
-                      setState(() {
-                        isSelected
-                            ? _selectedSkills.remove(skill)
-                            : _selectedSkills.add(skill);
-                      });
-                    },
+                    onSelected: isSubmitting
+                        ? null
+                        : (_) {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedSkills.remove(skill);
+                              } else if (_selectedSkills.length <
+                                  ApplicationRules.skillsMax) {
+                                _selectedSkills.add(skill);
+                              }
+                            });
+                          },
                     selectedColor: NodoColors.primary,
                     backgroundColor: NodoColors.surface,
                     side: BorderSide(
@@ -211,15 +223,18 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
                   Expanded(
                     child: TextField(
                       controller: _customSkillController,
+                      enabled: !isSubmitting,
+                      maxLength: CatalogService.nameMaxLength,
+                      textCapitalization: TextCapitalization.characters,
                       decoration: _inputDecoration(
                         hint: 'Otra habilidad (ej. Comunidad)',
-                      ),
+                      ).copyWith(errorText: _customSkillError, counterText: ''),
                       onSubmitted: (_) => _addCustomSkill(),
                     ),
                   ),
                   const SizedBox(width: 10),
                   IconButton.filled(
-                    onPressed: _addCustomSkill,
+                    onPressed: isSubmitting ? null : _addCustomSkill,
                     icon: const Icon(Icons.add_rounded),
                     style: IconButton.styleFrom(
                       backgroundColor: NodoColors.primary,
@@ -234,7 +249,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
                 initialValue: _experience,
                 decoration: _inputDecoration(hint: 'Selecciona tu nivel'),
                 isExpanded: true,
-                items: _experienceLevels
+                items: ApplicationRules.experienceLevels
                     .map(
                       (level) => DropdownMenuItem(
                         value: level,
@@ -245,12 +260,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
                 onChanged: isSubmitting
                     ? null
                     : (value) => setState(() => _experience = value),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Selecciona tu experiencia';
-                  }
-                  return null;
-                },
+                validator: validateExperience,
               ),
             ],
           ),

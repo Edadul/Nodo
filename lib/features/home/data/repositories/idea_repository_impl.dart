@@ -14,7 +14,4 @@ class IdeaRepositoryImpl implements IdeaRepository {
 
   @override
   Future<List<String>> getCategories() => _dataSource.fetchCategories();
-
-  @override
-  Future<Idea> createIdea(Idea idea) => _dataSource.insertIdea(idea);
 }

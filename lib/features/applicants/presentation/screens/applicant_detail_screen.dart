@@ -14,7 +14,7 @@ class ApplicantDetailScreen extends StatefulWidget {
     required this.viewModel,
   });
 
-  final int applicantId;
+  final String applicantId;
   final ApplicantsViewModel viewModel;
 
   @override
@@ -22,8 +22,6 @@ class ApplicantDetailScreen extends StatefulWidget {
 }
 
 class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
-  bool _isUpdating = false;
-
   void _onViewModelChanged() {
     if (mounted) setState(() {});
   }
@@ -41,10 +39,8 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
   }
 
   Future<void> _decide(Applicant applicant, ApplicantStatus status) async {
-    setState(() => _isUpdating = true);
     final updated = await widget.viewModel.updateStatus(applicant.id, status);
     if (!mounted) return;
-    setState(() => _isUpdating = false);
 
     if (updated != null) {
       Navigator.pop(context);
@@ -94,7 +90,7 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: applicant == null
+      bottomNavigationBar: applicant == null || !applicant.isPending
           ? null
           : _buildFooter(applicant),
     );
@@ -107,6 +103,10 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
         _ProfileHeaderCard(applicant: applicant),
         const SizedBox(height: 16),
         _MotivationCard(motivation: applicant.motivation),
+        if (applicant.experience.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _InfoCard(title: 'EXPERIENCIA', value: applicant.experience),
+        ],
         if (applicant.hasAttachment) ...[
           const SizedBox(height: 16),
           _AttachmentCard(applicant: applicant),
@@ -118,6 +118,9 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
   }
 
   Widget _buildFooter(Applicant applicant) {
+    final isUpdating = widget.viewModel.isUpdating(applicant.id);
+    final canAccept = !isUpdating && !widget.viewModel.isFull;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -132,7 +135,7 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: _isUpdating
+                onPressed: isUpdating
                     ? null
                     : () => _decide(applicant, ApplicantStatus.rejected),
                 style: OutlinedButton.styleFrom(
@@ -155,9 +158,9 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton(
-                onPressed: _isUpdating
-                    ? null
-                    : () => _decide(applicant, ApplicantStatus.accepted),
+                onPressed: canAccept
+                    ? () => _decide(applicant, ApplicantStatus.accepted)
+                    : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: NodoColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -165,7 +168,7 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: _isUpdating
+                child: isUpdating
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -174,9 +177,9 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
                           strokeWidth: 2.5,
                         ),
                       )
-                    : const Text(
-                        'Aceptar',
-                        style: TextStyle(
+                    : Text(
+                        widget.viewModel.isFull ? 'Sin cupos' : 'Aceptar',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
@@ -274,6 +277,48 @@ class _MotivationCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             motivation,
+            style: const TextStyle(
+              color: NodoColors.textPrimary,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.title, required this.value});
+
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: NodoColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: NodoColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
             style: const TextStyle(
               color: NodoColors.textPrimary,
               fontSize: 14,

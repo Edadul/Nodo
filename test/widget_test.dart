@@ -3,47 +3,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:nodo/main.dart';
-import 'package:nodo/core/services/project_service.dart';
+import 'package:nodo/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:nodo/features/home/data/datasources/mock_idea_datasource.dart';
 import 'package:nodo/features/home/data/repositories/idea_repository_impl.dart';
 import 'package:nodo/features/home/domain/usecases/get_ideas.dart';
 import 'package:nodo/features/home/domain/usecases/get_categories.dart';
 import 'package:nodo/features/home/presentation/viewmodels/home_view_model.dart';
 
-import 'package:nodo/features/application/data/datasources/mock_application_datasource.dart';
-import 'package:nodo/features/application/data/repositories/application_repository_impl.dart';
-import 'package:nodo/features/application/domain/usecases/submit_application.dart';
-import 'package:nodo/features/application/presentation/viewmodels/application_view_model.dart';
-import 'package:nodo/core/db/roble_database.dart';
+import 'support/fake_auth.dart';
+import 'support/seed.dart';
 
 void main() {
-  Widget createTestApp() {
-    final mockIdeaDataSource = MockIdeaDataSource();
-    final ideaRepository = IdeaRepositoryImpl(mockIdeaDataSource);
+  Future<Widget> createTestApp() async {
+    final ideaRepository = IdeaRepositoryImpl(MockIdeaDataSource());
     final getIdeas = GetIdeas(ideaRepository);
     final getCategories = GetCategories(ideaRepository);
 
-    final mockAppDataSource = MockApplicationDataSource();
-    final appRepository = ApplicationRepositoryImpl(mockAppDataSource);
-    final submitApplication = SubmitApplication(appRepository);
-
-    // Provide a stub database and project service for the test
-    final stubDb = Roble();
-    final projectService = ProjectService(stubDb);
-
     return MultiProvider(
       providers: [
-        Provider<ProjectService>(create: (_) => projectService),
+        ChangeNotifierProvider<AuthViewModel>.value(value: await authFor(guest)),
         Provider<HomeViewModel Function()>(
           create: (_) => () => HomeViewModel(
-            getIdeas: getIdeas,
-            getCategories: getCategories,
-          ),
-        ),
-        Provider<ApplicationViewModel Function()>(
-          create: (_) => () => ApplicationViewModel(
-            submitApplication: submitApplication,
-          ),
+                getIdeas: getIdeas,
+                getCategories: getCategories,
+              ),
         ),
       ],
       child: const NodoApp(),
@@ -51,7 +34,7 @@ void main() {
   }
 
   testWidgets('Home muestra título Únete y feed', (tester) async {
-    await tester.pumpWidget(createTestApp());
+    await tester.pumpWidget(await createTestApp());
     await tester.pumpAndSettle();
 
     expect(find.text('Únete'), findsOneWidget);
@@ -65,7 +48,7 @@ void main() {
   });
 
   testWidgets('Filtrar por categoría actualiza el feed', (tester) async {
-    await tester.pumpWidget(createTestApp());
+    await tester.pumpWidget(await createTestApp());
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilterChip, 'TECNOLOGÍA'));
@@ -73,5 +56,15 @@ void main() {
 
     expect(find.text('Asistente de estudio con IA'), findsOneWidget);
     expect(find.text('Huerta urbana colaborativa'), findsNothing);
+  });
+
+  testWidgets('Crear proyecto como invitado lleva al login', (tester) async {
+    await tester.pumpWidget(await createTestApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Accede con tu cuenta específica'), findsOneWidget);
   });
 }

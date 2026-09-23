@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../auth/domain/entities/user.dart';
 
 import '../../domain/usecases/get_ideas.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
 import '../../../application/presentation/screens/project_detail_admin_screen.dart';
+import '../../../project_creation/presentation/screens/create_project_screen.dart';
 import '../../data/mock_profile.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../domain/entities/idea.dart';
+import '../../domain/entities/profile.dart';
 
 typedef ProfileScreen = ProfileView;
 
@@ -23,18 +29,42 @@ class _ProfileViewState extends State<ProfileView> {
   List<Idea> _myProjects = [];
   bool _isLoadingProjects = true;
 
+  Profile? _profile;
+  bool _isPublicSession = true;
+  bool _isLoadingProfile = true;
+
+  AuthViewModel? get _auth => context.read<AuthViewModel?>();
+
   @override
   void initState() {
     super.initState();
-    _loadMyProjects();
+    _load();
+  }
+
+  /// El perfil primero: los proyectos se filtran con el usuario de la sesión.
+  Future<void> _load() async {
+    await _loadUserProfile();
+    await _loadMyProjects();
   }
 
   Future<void> _loadMyProjects() async {
+    final creatorId = _auth?.signedInUser?.id;
+    // En sesión pública nadie es dueño de nada: no hay proyectos que
+    // administrar.
+    if (creatorId == null) {
+      if (mounted) setState(() => _isLoadingProjects = false);
+      return;
+    }
+
     try {
       final ideas = await context.read<GetIdeas>()();
       if (mounted) {
+        // `projects.creator_id` → `users.id` → el mismo id de la sesión.
+        final myProjects = ideas
+            .where((idea) => idea.isCreatedBy(creatorId))
+            .toList(growable: false);
         setState(() {
-          _myProjects = ideas.take(3).toList();
+          _myProjects = myProjects;
           _isLoadingProjects = false;
         });
       }
@@ -47,28 +77,112 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
-  void _openAdminDetail(Idea idea) {
-    Navigator.push(
+  /// Construye un [Profile] con la información que ya trae la sesión
+  /// autenticada (nombre, correo, avatar), sin depender de que exista una fila
+  /// en la tabla `users`. Así el nombre real siempre se ve.
+  Profile _profileFromUser(User user) {
+    final username = user.email.split('@').first;
+    return Profile(
+      name: user.name,
+      username: username.startsWith('@') ? username : '@$username',
+      bio: user.name,
+      avatar: user.avatarUrl,
+      posts: 0,
+      followers: 0,
+      favorites: 0,
+    );
+  }
+
+  Future<void> _loadUserProfile() async {
+    final auth = _auth;
+    if (auth == null) {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+      }
+      return;
+    }
+
+    if (auth.currentUser == null) {
+      await auth.loadCurrentUser();
+    }
+
+    if (!mounted) return;
+
+    Profile? profile;
+    if (auth.currentUser != null) {
+      final repository = context.read<ProfileRepository?>();
+      profile = await repository?.fetchByUserId(auth.currentUser!.id);
+
+      // Si la tabla `users` aún no tiene fila (o no es legible para esta
+      // cuenta), no mostramos el perfil de ejemplo: usamos los datos reales
+      // que ya trae la sesión autenticada (nombre, correo, avatar).
+      profile ??= _profileFromUser(auth.currentUser!);
+    }
+
+    if (mounted) {
+      setState(() {
+        _profile = profile;
+        _isPublicSession = auth.isPublicSession;
+        _isLoadingProfile = false;
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    final auth = _auth;
+    if (auth == null) return;
+    await auth.logout();
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _openAdminDetail(Idea idea) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ProjectDetailAdminScreen(idea: idea),
       ),
     );
+    if (mounted) _loadMyProjects();
   }
 
-  void _openApplicants(Idea idea) {
-    final projectId = int.tryParse(idea.id) ?? 1;
-    Navigator.push(
+  Future<void> _openApplicants(Idea idea) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ApplicantsListScreen(projectId: projectId),
+        builder: (_) => ApplicantsListScreen(projectId: idea.id),
       ),
     );
+    // Aceptar postulaciones cambia los cupos ocupados.
+    if (mounted) _loadMyProjects();
+  }
+
+  Future<void> _openCreateProject() async {
+    final created = await Navigator.push<Idea>(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateProjectScreen()),
+    );
+    if (!mounted || created == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Proyecto "${created.title}" publicado')),
+    );
+    setState(() => _isLoadingProjects = true);
+    await _loadMyProjects();
   }
 
   @override
   Widget build(BuildContext context) {
-    final profile = profile1;
+    if (_isLoadingProfile) {
+      // Mientras se carga el perfil real no enseñamos la cuenda de ejemplo ni
+      // la mock: mostramos una pantalla de carga para que no «parpadee»
+      // durante un instante tras iniciar sesión.
+      return const _ProfileLoadingView();
+    }
+
+    final profile = _profile ?? profile1;
 
     return Scaffold(
       backgroundColor: NodoColors.background,
@@ -110,7 +224,7 @@ class _ProfileViewState extends State<ProfileView> {
         children: [
           _buildProfileHeader(profile),
           const SizedBox(height: 20),
-          _buildStatsRow(),
+          _buildStatsRow(profile),
           const SizedBox(height: 20),
           _buildActionButtons(),
           const SizedBox(height: 20),
@@ -213,7 +327,7 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(Profile profile) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
@@ -224,11 +338,14 @@ class _ProfileViewState extends State<ProfileView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          // «Proyectos» es el recuento real de las ideas del usuario que ya
+          // calculamos en `_loadMyProjects` (filtradas por creator_id), no la
+          // columna estática posts_count de `users` (que suele venir a 0).
           _buildStatColumn('${_myProjects.length}', 'Proyectos'),
           Container(height: 28, width: 1, color: NodoColors.chipBorder),
-          _buildStatColumn('8', 'Postulaciones'),
+          _buildStatColumn('${profile.followers}', 'Postulaciones'),
           Container(height: 28, width: 1, color: NodoColors.chipBorder),
-          _buildStatColumn('3', 'Colaboraciones'),
+          _buildStatColumn('${profile.favorites}', 'Colaboraciones'),
         ],
       ),
     );
@@ -260,51 +377,102 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: FilledButton.tonal(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Editar perfil próximamente')),
-              );
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: NodoColors.primaryMuted,
-              foregroundColor: NodoColors.primaryDark,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.tonal(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Editar perfil próximamente')),
+                  );
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: NodoColors.primaryMuted,
+                  foregroundColor: NodoColors.primaryDark,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text(
+                  'Editar Perfil',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            child: const Text(
-              'Editar Perfil',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Enlace de perfil copiado')),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: NodoColors.textPrimary,
+                  side: const BorderSide(color: NodoColors.chipBorder),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text(
+                  'Compartir',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_isPublicSession) ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: NodoColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: const Icon(Icons.login_rounded, size: 18),
+              label: const Text(
+                'Iniciar sesión',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Enlace de perfil copiado')),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: NodoColors.textPrimary,
-              side: const BorderSide(color: NodoColors.chipBorder),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        ] else ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _logout,
+              style: FilledButton.styleFrom(
+                backgroundColor: NodoColors.primaryMuted,
+                foregroundColor: NodoColors.primaryDark,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            child: const Text(
-              'Compartir',
-              style: TextStyle(fontWeight: FontWeight.w700),
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: const Text(
+                'Cerrar sesión',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -389,23 +557,24 @@ class _ProfileViewState extends State<ProfileView> {
                 color: NodoColors.navInactive,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Aún no has creado ningún proyecto',
-                style: TextStyle(
+              Text(
+                _isPublicSession
+                    ? 'Inicia sesión para crear y administrar proyectos'
+                    : 'Aún no has creado ningún proyecto',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
                   color: NodoColors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Crear proyecto')),
-                  );
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Crear Proyecto'),
-              ),
+              if (!_isPublicSession) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: _openCreateProject,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Crear Proyecto'),
+                ),
+              ],
             ],
           ),
         ),
@@ -418,6 +587,11 @@ class _ProfileViewState extends State<ProfileView> {
           _buildProjectCard(idea),
           const SizedBox(height: 14),
         ],
+        OutlinedButton.icon(
+          onPressed: _openCreateProject,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Crear otro proyecto'),
+        ),
       ],
     );
   }
@@ -505,9 +679,11 @@ class _ProfileViewState extends State<ProfileView> {
                                   color: NodoColors.chipInactive,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Text(
-                                  'En desarrollo',
-                                  style: TextStyle(
+                                child: Text(
+                                  idea.isFull
+                                      ? 'Cupos completos'
+                                      : '${idea.availableSpots} cupos libres',
+                                  style: const TextStyle(
                                     fontSize: 10.5,
                                     fontWeight: FontWeight.w700,
                                     color: NodoColors.textSecondary,
@@ -667,6 +843,25 @@ class _ProfileViewState extends State<ProfileView> {
             onTap: () {},
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Pantalla de carga del perfil: se enseña durante el instante en que la
+/// cuenta real (tabla `users`) aún no ha terminado de cargarse, para que no
+/// «parpadee» la cuenta de ejemplo ni la mock tras iniciar sesión.
+class _ProfileLoadingView extends StatelessWidget {
+  const _ProfileLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: NodoColors.background,
+      body: Center(
+        child: CircularProgressIndicator(
+          color: NodoColors.primary,
+        ),
       ),
     );
   }

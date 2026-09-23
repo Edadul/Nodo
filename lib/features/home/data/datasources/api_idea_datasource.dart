@@ -1,79 +1,86 @@
 import '../../../../core/db/db_interface.dart';
+import '../../../../core/db/row_parsing.dart';
+import '../../../../core/services/catalog_service.dart';
 import '../../domain/entities/idea.dart';
 import 'idea_datasource.dart';
+import 'project_row_mapper.dart';
 
 class ApiIdeaDataSource implements IdeaDataSource {
-  ApiIdeaDataSource(this._database);
+  ApiIdeaDataSource(this._database, this._catalog);
 
   final IDatabase _database;
+  final CatalogService _catalog;
 
-  static const _categories = ['TODAS'];
-  static const _gradientColors = [
-    [0xFF7B6CF0, 0xFFB8A9FF],
-    [0xFF4A3CC7, 0xFF7A6BE8],
-    [0xFF6A5AE0, 0xFF9B8CF5],
-    [0xFF553ECF, 0xFF8E7DF0],
-  ];
+  static const allCategories = 'TODAS';
 
   @override
   Future<List<Idea>> fetchIdeas({String? category}) async {
-    final rows = await _database.read('project');
-    return rows.map(_toIdea).where((idea) {
-      return category == null || category == 'TODAS' || idea.category == category;
-    }).toList(growable: false);
+    final results = await Future.wait([
+      _database.read('projects'),
+      _catalog.readAll(CatalogTable.categories),
+      _database.read('project_categories'),
+      _catalog.readAll(CatalogTable.skills),
+      _database.read('project_skills'),
+    ]);
+    final projects = results[0] as List<Map<String, dynamic>>;
+    final categoryNames = results[1] as Map<String, String>;
+    final projectCategories = results[2] as List<Map<String, dynamic>>;
+    final skillNames = results[3] as Map<String, String>;
+    final projectSkills = results[4] as List<Map<String, dynamic>>;
+
+    final categoriesByProject =
+        _group(projectCategories, 'category_id', categoryNames);
+    final skillsByProject = _group(projectSkills, 'skill_id', skillNames);
+
+    final ideas = projects.map((row) {
+      final id = RowParsing.schemaId(row);
+      return ProjectRowMapper.fromRow(
+        row,
+        categories: categoriesByProject[id] ?? const [],
+        skills: skillsByProject[id] ?? const [],
+      );
+    }).where((idea) {
+      return category == null ||
+          category == allCategories ||
+          idea.categories.contains(category);
+    }).toList();
+
+    // Más recientes primero.
+    ideas.sort((a, b) {
+      final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+    return List.unmodifiable(ideas);
   }
 
   @override
   Future<List<String>> fetchCategories() async {
-    final rows = await _database.read('project');
-    final categories = rows
-        .map((row) => _text(row['category'], fallback: 'TECNOLOGÍA'))
+    final names = (await _catalog.readAll(CatalogTable.categories))
+        .values
         .toSet()
         .toList()
       ..sort();
-    return [..._categories, ...categories];
+    return [allCategories, ...names];
   }
 
-  @override
-  Future<Idea> insertIdea(Idea idea) async {
-    await _database.insert('project', {
-      'title': idea.title,
-      'description': idea.description,
-      'required_skills': idea.skills.join(', '),
-      'category': idea.category,
-      'filled_spots': idea.filledSpots,
-      'total_spots': idea.totalSpots,
-    });
-    // Note: If result contains the new ID, we could map it, but for now we just return the idea
-    return idea; // Replace with updated Idea if ID is returned
-  }
-
-  Idea _toIdea(Map<String, dynamic> row) {
-    final id = row['id'];
-    final colorIndex = (id is int ? id : int.tryParse('$id') ?? 0) %
-        _gradientColors.length;
-    return Idea(
-      id: '$id',
-      title: _text(row['title']),
-      description: _text(row['description']),
-      category: _text(row['category'], fallback: 'TECNOLOGÍA'),
-      skills: _text(row['required_skills'])
-          .split(',')
-          .map((skill) => skill.trim())
-          .where((skill) => skill.isNotEmpty)
-          .toList(growable: false),
-      filledSpots: _number(row['filled_spots']),
-      totalSpots: _number(row['total_spots'], fallback: 5),
-      gradientColors: _gradientColors[colorIndex],
-    );
-  }
-
-  String _text(Object? value, {String fallback = ''}) {
-    final text = value?.toString().trim() ?? '';
-    return text.isEmpty ? fallback : text;
-  }
-
-  int _number(Object? value, {int fallback = 0}) {
-    return value is int ? value : int.tryParse('$value') ?? fallback;
+  /// Agrupa una tabla puente (`project_id`, `<foreignKey>`) en
+  /// `project_id → [nombres]`.
+  Map<String, List<String>> _group(
+    List<Map<String, dynamic>> links,
+    String foreignKey,
+    Map<String, String> names,
+  ) {
+    final grouped = <String, List<String>>{};
+    for (final link in links) {
+      final projectId = RowParsing.text(link['project_id']);
+      final name = names[RowParsing.text(link[foreignKey])];
+      if (projectId == null || name == null) continue;
+      grouped.putIfAbsent(projectId, () => []).add(name);
+    }
+    for (final list in grouped.values) {
+      list.sort();
+    }
+    return grouped;
   }
 }

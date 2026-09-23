@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
+import '../../../auth/domain/entities/user.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../domain/entities/applicant.dart';
 import '../../domain/entities/applicant_status.dart';
 import '../viewmodels/applicants_view_model.dart';
@@ -16,7 +18,7 @@ class ApplicantsListScreen extends StatefulWidget {
     this.viewModel,
   });
 
-  final int projectId;
+  final String projectId;
 
   /// Permite inyectar un ViewModel en tests.
   final ApplicantsViewModel? viewModel;
@@ -48,7 +50,10 @@ class _ApplicantsListScreenState extends State<ApplicantsListScreen> {
     super.initState();
     _ownsViewModel = widget.viewModel == null;
     _viewModel = widget.viewModel ??
-        context.read<ApplicantsViewModel Function(int)>()(widget.projectId);
+        context.read<ApplicantsViewModel Function(String, User?)>()(
+          widget.projectId,
+          context.read<AuthViewModel?>()?.signedInUser,
+        );
     _viewModel.addListener(_onViewModelChanged);
     _viewModel.load();
   }
@@ -137,6 +142,20 @@ class _ApplicantsListScreenState extends State<ApplicantsListScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
+          if (vm.project != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              vm.isFull
+                  ? 'Cupos completos (${vm.project!.spotsLabel})'
+                  : '${vm.project!.availableSpots} cupos disponibles '
+                      '(${vm.project!.spotsLabel})',
+              style: TextStyle(
+                color: vm.isFull ? NodoColors.primaryDark : NodoColors.primary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -206,11 +225,16 @@ class _ApplicantsListScreenState extends State<ApplicantsListScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final applicant = applicants[index];
+        final busy = vm.isUpdating(applicant.id);
         return ApplicantCard(
           applicant: applicant,
           onTap: () => _openDetail(applicant),
-          onAccept: () => _updateStatus(applicant, ApplicantStatus.accepted),
-          onReject: () => _updateStatus(applicant, ApplicantStatus.rejected),
+          onAccept: busy || vm.isFull
+              ? null
+              : () => _updateStatus(applicant, ApplicantStatus.accepted),
+          onReject: busy
+              ? null
+              : () => _updateStatus(applicant, ApplicantStatus.rejected),
         );
       },
     );
