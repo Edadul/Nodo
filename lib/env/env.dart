@@ -1,18 +1,29 @@
-import 'package:envied/envied.dart';
+/// Configuración de Roble (contrato Nodo).
+///
+/// La clave del invitado se pasa con:
+/// `--dart-define=GUEST_PASSWORD=...`
+abstract final class Env {
+  static const String baseUrl = String.fromEnvironment(
+    'BASE_URL',
+    defaultValue: 'https://roble-api.openlab.uninorte.edu.co',
+  );
 
-part 'env.g.dart';
+  static const String contractId = String.fromEnvironment(
+    'CONTRACT_ID',
+    defaultValue: 'nodo_a9a72e0eab',
+  );
 
-@Envied(path: '.env')
-abstract class Env {
-  @EnviedField(varName: 'BASE_URL')
-  static final String baseUrl = _Env.baseUrl;
+  static const String guestEmail = String.fromEnvironment(
+    'GUEST_EMAIL',
+    defaultValue: 'guest@roble.local',
+  );
 
-  @EnviedField(varName: 'CONTRACT_ID', obfuscate: true)
-  static final String contractId = _Env.contractId;
+  static const String guestPassword = String.fromEnvironment(
+    'GUEST_PASSWORD',
+  );
 
-  @EnviedField(varName: 'GUEST_EMAIL')
-  static final String guestEmail = _Env.guestEmail;
+  static bool get hasContract => contractId.trim().isNotEmpty;
 
-  @EnviedField(varName: 'GUEST_PASSWORD', obfuscate: true)
-  static final String guestPassword = _Env.guestPassword;
+  static bool get hasGuestCredentials =>
+      guestEmail.isNotEmpty && guestPassword.isNotEmpty;
 }
