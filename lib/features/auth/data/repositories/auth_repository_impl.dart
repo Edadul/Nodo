@@ -5,21 +5,35 @@ import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  final RobleApiDataBase roble;
-
   AuthRepositoryImpl(this.roble);
+
+  final RobleApiDataBase roble;
 
   @override
   Future<User> login({
     required String email,
     required String password,
   }) async {
-    // La sesión pública (guest) se cierra antes de abrir la del usuario
-    // específico, tal y como se exige. Si el login falla, se restaura la
-    // sesión pública para que la app siga funcionando como invitado.
     await logout();
 
     try {
+      final userMap = await roble.login(email: email, password: password);
+      return _mapUser(userMap);
+    } catch (e) {
+      await signInAsGuest();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<User> register({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    await logout();
+    try {
+      await roble.register(email: email, password: password, name: name);
       final userMap = await roble.login(email: email, password: password);
       return _mapUser(userMap);
     } catch (e) {
@@ -39,13 +53,14 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> signInAsGuest() async {
+    if (!Env.hasGuestCredentials) return;
     try {
       await roble.login(
         email: Env.guestEmail,
         password: Env.guestPassword,
       );
     } catch (_) {
-      // Si no se puede restaurar la sesión pública, se queda sin sesión.
+      // Sin sesión pública si el invitado no está disponible.
     }
   }
 
@@ -57,6 +72,20 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<User?> restoreOrGuest() async {
+    try {
+      final restored = await roble.restoreSession();
+      if (restored) {
+        return currentUser();
+      }
+    } catch (_) {
+      // Continúa con invitado.
+    }
+    await signInAsGuest();
+    return currentUser();
   }
 
   User _mapUser(Map<String, dynamic> userMap) {
