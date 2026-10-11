@@ -36,6 +36,12 @@ import '../../features/applicants/domain/usecases/decide_application.dart';
 import '../../features/applicants/domain/usecases/get_applicants.dart';
 import '../../features/applicants/presentation/viewmodels/applicants_view_model.dart';
 
+// Project updates
+import '../../features/projects/data/datasources/api_project_updates_datasource.dart';
+import '../../features/projects/data/repositories/project_updates_repository_impl.dart';
+import '../../features/projects/domain/usecases/get_project_updates.dart';
+import '../../features/projects/domain/usecases/publish_project_update.dart';
+
 // Auth
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/entities/user.dart';
@@ -164,6 +170,29 @@ class ApplicantsModule {
       ];
 }
 
+class ProjectUpdatesModule {
+  static List<SingleChildWidget> get providers => [
+        Provider<ApiProjectUpdatesDataSource>(
+          create: (context) =>
+              ApiProjectUpdatesDataSource(context.read<IDatabase>()),
+        ),
+        Provider<ProjectUpdatesRepositoryImpl>(
+          create: (context) => ProjectUpdatesRepositoryImpl(
+            context.read<ApiProjectUpdatesDataSource>(),
+          ),
+        ),
+        Provider<GetProjectUpdates>(
+          create: (context) =>
+              GetProjectUpdates(context.read<ProjectUpdatesRepositoryImpl>()),
+        ),
+        Provider<PublishProjectUpdate>(
+          create: (context) => PublishProjectUpdate(
+            context.read<ProjectUpdatesRepositoryImpl>(),
+          ),
+        ),
+      ];
+}
+
 class AppModule extends StatelessWidget {
   final Widget child;
   final IDatabase database;
@@ -184,6 +213,7 @@ class AppModule extends StatelessWidget {
         ...ProjectCreationModule.providers,
         ...ApplicationModule.providers,
         ...ApplicantsModule.providers,
+        ...ProjectUpdatesModule.providers,
         Provider<AuthRepository>(
           create: (_) => AuthRepositoryImpl(Roble.robleDatabase),
         ),

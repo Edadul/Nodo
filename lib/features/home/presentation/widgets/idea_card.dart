@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
+import '../../../projects/presentation/widgets/project_status_badge.dart';
 import '../../domain/entities/idea.dart';
 
 class IdeaCard extends StatelessWidget {
@@ -78,14 +79,23 @@ class IdeaCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      idea.title,
-                      style: const TextStyle(
-                        color: NodoColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            idea.title,
+                            style: const TextStyle(
+                              color: NodoColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ProjectStatusBadge(status: idea.status),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(

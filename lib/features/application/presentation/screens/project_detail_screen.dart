@@ -7,6 +7,11 @@ import '../../../auth/domain/entities/user.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../home/domain/entities/idea.dart';
+import '../../../projects/domain/entities/project_update.dart';
+import '../../../projects/domain/usecases/get_project_updates.dart';
+import '../../../projects/presentation/screens/publish_update_screen.dart';
+import '../../../projects/presentation/widgets/project_status_badge.dart';
+import '../../../projects/presentation/widgets/project_updates_timeline.dart';
 import '../../domain/entities/application.dart';
 import '../../domain/usecases/get_my_application.dart';
 import 'application_form_screen.dart';
@@ -23,14 +28,27 @@ class ProjectDetailScreen extends StatefulWidget {
 
 class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Future<Application?>? _myApplication;
+  Future<List<ProjectUpdate>>? _updates;
   String? _loadedForUserId;
+  late Idea _idea;
 
-  Idea get idea => widget.idea;
+  @override
+  void initState() {
+    super.initState();
+    _idea = widget.idea;
+    _loadUpdates();
+  }
+
+  Idea get idea => _idea;
 
   List<Color> get _gradientColors =>
       idea.gradientColors.map(Color.new).toList(growable: false);
 
-  /// Consulta (una vez por usuario) si ya se postuló a este proyecto.
+  void _loadUpdates() {
+    _updates = context.read<GetProjectUpdates?>()?.call(idea.id) ??
+        Future.value(const <ProjectUpdate>[]);
+  }
+
   Future<Application?>? _applicationFor(User user) {
     if (_loadedForUserId != user.id) {
       _loadedForUserId = user.id;
@@ -43,6 +61,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
   void _reloadApplication() {
     setState(() => _loadedForUserId = null);
+  }
+
+  Future<void> _openPublishUpdate() async {
+    final update = await Navigator.push<ProjectUpdate>(
+      context,
+      MaterialPageRoute(builder: (_) => PublishUpdateScreen(idea: idea)),
+    );
+    if (!mounted || update == null) return;
+    setState(() {
+      if (update.status != null) {
+        _idea = _idea.copyWith(status: update.status);
+      }
+      _loadUpdates();
+    });
   }
 
   @override
@@ -125,9 +157,27 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Widget _buildBody(BuildContext context) {
+    final user = context.watch<AuthViewModel?>()?.signedInUser;
+    final isOwner = user != null && idea.isCreatedBy(user.id);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          children: [
+            ProjectStatusBadge(status: idea.status),
+            const SizedBox(width: 10),
+            Text(
+              idea.status.subtitle,
+              style: const TextStyle(
+                color: NodoColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
         Text(
           idea.title,
           style: const TextStyle(
@@ -207,6 +257,42 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 28),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Avances del proyecto',
+                style: TextStyle(
+                  color: NodoColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            if (isOwner)
+              TextButton.icon(
+                onPressed: _openPublishUpdate,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Publicar'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        FutureBuilder<List<ProjectUpdate>>(
+          future: _updates,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return ProjectUpdatesTimeline(
+              updates: snapshot.data ?? const [],
+            );
+          },
         ),
       ],
     );
@@ -306,7 +392,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
-  /// Botón principal. Sin [onPressed] queda deshabilitado (estado informativo).
   Widget _actionButton({
     required String label,
     IconData? icon,
