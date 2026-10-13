@@ -41,6 +41,8 @@ import '../../features/projects/data/datasources/api_project_updates_datasource.
 import '../../features/projects/data/repositories/project_updates_repository_impl.dart';
 import '../../features/projects/domain/usecases/get_project_updates.dart';
 import '../../features/projects/domain/usecases/publish_project_update.dart';
+import '../../features/projects/domain/usecases/update_project_details.dart';
+import '../../features/projects/domain/usecases/update_project_status.dart';
 
 // Auth
 import '../../demo/demo_auth_repository.dart';
@@ -191,6 +193,14 @@ class ProjectUpdatesModule {
           create: (context) => PublishProjectUpdate(
             context.read<ProjectUpdatesRepositoryImpl>(),
           ),
+        ),
+        Provider<UpdateProjectStatus>(
+          create: (context) =>
+              UpdateProjectStatus(context.read<IDatabase>()),
+        ),
+        Provider<UpdateProjectDetails>(
+          create: (context) =>
+              UpdateProjectDetails(context.read<IDatabase>()),
         ),
       ];
 }

@@ -53,12 +53,17 @@ class Idea {
 
   String get spotsLabel => '$filledSpots de $totalSpots cupos';
 
-  Idea copyWith({int? filledSpots, ProjectStatus? status}) {
+  Idea copyWith({
+    String? title,
+    String? description,
+    int? filledSpots,
+    ProjectStatus? status,
+  }) {
     return Idea(
       id: id,
       recordId: recordId,
-      title: title,
-      description: description,
+      title: title ?? this.title,
+      description: description ?? this.description,
       categories: categories,
       skills: skills,
       filledSpots: filledSpots ?? this.filledSpots,
