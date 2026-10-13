@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../auth/presentation/screens/login_screen.dart';
-import '../../../auth/presentation/viewmodels/auth_view_model.dart';
-import '../../../auth/domain/entities/user.dart';
 
-import '../../domain/usecases/get_ideas.dart';
+import '../../../../core/db/db_interface.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
 import '../../../application/presentation/screens/project_detail_admin_screen.dart';
+import '../../../auth/domain/entities/user.dart';
+import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../project_creation/presentation/screens/create_project_screen.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/entities/idea.dart';
 import '../../domain/entities/profile.dart';
+import '../../domain/usecases/get_ideas.dart';
 
 typedef ProfileScreen = ProfileView;
 
@@ -212,11 +214,8 @@ class _ProfileViewState extends State<ProfileView> {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Ajustes del perfil')),
-              );
-            },
+            tooltip: 'Ajustes',
+            onPressed: () => setState(() => _selectedTab = 1),
             icon: const Icon(
               Icons.settings_outlined,
               color: NodoColors.textPrimary,
@@ -381,6 +380,151 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
+  Future<void> _editProfile() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final nameCtrl = TextEditingController(text: profile.name);
+    final bioCtrl = TextEditingController(text: profile.bio);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar perfil'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Nombre'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bioCtrl,
+              decoration: const InputDecoration(labelText: 'Bio'),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    final name = nameCtrl.text.trim();
+    final bio = bioCtrl.text.trim();
+    nameCtrl.dispose();
+    bioCtrl.dispose();
+    if (saved != true || !mounted || name.isEmpty) return;
+
+    final userId = _auth?.signedInUser?.id;
+    if (userId != null) {
+      try {
+        final db = context.read<IDatabase>();
+        final rows = await db.read('users', filters: {'id': userId});
+        if (rows.isNotEmpty) {
+          final recordId = rows.first['_id']?.toString() ?? '';
+          if (recordId.isNotEmpty) {
+            await db.update('users', recordId, {
+              'name': name,
+              'bio': bio,
+            });
+          }
+        }
+      } catch (_) {
+        // Si Roble no permite update, igual actualizamos la UI local.
+      }
+    }
+
+    setState(() {
+      _profile = Profile(
+        name: name,
+        username: profile.username,
+        bio: bio.isEmpty ? profile.bio : bio,
+        avatar: profile.avatar,
+        posts: profile.posts,
+        followers: profile.followers,
+        favorites: profile.favorites,
+      );
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perfil actualizado')),
+      );
+    }
+  }
+
+  Future<void> _shareProfile() async {
+    final profile = _profile;
+    final text = profile == null
+        ? 'Mira Nodo: conecta con proyectos del campus'
+        : 'Perfil de ${profile.name} (${profile.username}) en Nodo';
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Texto de perfil copiado')),
+    );
+  }
+
+  void _showInfoSheet({
+    required String title,
+    required String body,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: NodoColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: NodoColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: NodoColors.primary,
+                    ),
+                    child: const Text('Cerrar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildActionButtons() {
     return Column(
       children: [
@@ -388,11 +532,7 @@ class _ProfileViewState extends State<ProfileView> {
           children: [
             Expanded(
               child: FilledButton.tonal(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Editar perfil próximamente')),
-                  );
-                },
+                onPressed: _isPublicSession ? null : _editProfile,
                 style: FilledButton.styleFrom(
                   backgroundColor: NodoColors.primaryMuted,
                   foregroundColor: NodoColors.primaryDark,
@@ -410,11 +550,7 @@ class _ProfileViewState extends State<ProfileView> {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Enlace de perfil copiado')),
-                  );
-                },
+                onPressed: _shareProfile,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: NodoColors.textPrimary,
                   side: const BorderSide(color: NodoColors.chipBorder),
@@ -792,6 +928,7 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Widget _buildSettingsSection() {
+    final email = _auth?.signedInUser?.email ?? 'Sesión pública';
     return Card(
       elevation: 0,
       color: NodoColors.surface,
@@ -809,8 +946,13 @@ class _ProfileViewState extends State<ProfileView> {
               color: NodoColors.textPrimary,
             ),
             title: const Text('Seguridad de la Cuenta'),
+            subtitle: Text(email),
             trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {},
+            onTap: () => _showInfoSheet(
+              title: 'Seguridad',
+              body:
+                  'Tu sesión está asociada a $email. Si alguien más usa este dispositivo, cierra sesión desde el botón de abajo en tu perfil.',
+            ),
           ),
           const Divider(height: 1, indent: 56),
           SwitchListTile(
@@ -819,11 +961,23 @@ class _ProfileViewState extends State<ProfileView> {
               color: NodoColors.textPrimary,
             ),
             title: const Text('Notificaciones de Postulaciones'),
+            subtitle: Text(
+              _notificationsEnabled
+                  ? 'Recibirás avisos de nuevas postulaciones'
+                  : 'Notificaciones pausadas en este dispositivo',
+            ),
             value: _notificationsEnabled,
             onChanged: (value) {
-              setState(() {
-                _notificationsEnabled = value;
-              });
+              setState(() => _notificationsEnabled = value);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    value
+                        ? 'Notificaciones activadas'
+                        : 'Notificaciones desactivadas',
+                  ),
+                ),
+              );
             },
           ),
           const Divider(height: 1, indent: 56),
@@ -833,9 +987,13 @@ class _ProfileViewState extends State<ProfileView> {
               color: NodoColors.textPrimary,
             ),
             title: const Text('Tema y Apariencia'),
-            subtitle: const Text('Material 3'),
+            subtitle: const Text('Claro · Material 3'),
             trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {},
+            onTap: () => _showInfoSheet(
+              title: 'Tema y apariencia',
+              body:
+                  'Nodo usa el tema claro de la marca. El modo oscuro llegará en una próxima versión.',
+            ),
           ),
           const Divider(height: 1, indent: 56),
           ListTile(
@@ -845,7 +1003,11 @@ class _ProfileViewState extends State<ProfileView> {
             ),
             title: const Text('Ayuda y Soporte'),
             trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {},
+            onTap: () => _showInfoSheet(
+              title: 'Ayuda y soporte',
+              body:
+                  'Explora proyectos en el feed, postúlate desde el detalle y administra tus ideas desde Mi perfil. Si algo falla con Roble, pide al admin del contrato revisar tablas públicas y tu rol.',
+            ),
           ),
         ],
       ),

@@ -10,34 +10,51 @@ class HomeViewModel extends ChangeNotifier {
   HomeViewModel({
     required GetIdeas getIdeas,
     required GetCategories getCategories,
-  })  : _getIdeas = getIdeas, // ignore: prefer_initializing_formals
-        _getCategories = getCategories; // ignore: prefer_initializing_formals
+  })  : _getIdeas = getIdeas,
+        _getCategories = getCategories;
 
   final GetIdeas _getIdeas;
   final GetCategories _getCategories;
 
   HomeStatus status = HomeStatus.initial;
   String selectedCategory = 'TODAS';
+  String searchQuery = '';
   int navIndex = 0;
   List<String> categories = const [];
-  List<Idea> ideas = const [];
+  List<Idea> _allIdeas = const [];
   String? errorMessage;
 
-  Future<void> load() async {
-    status = HomeStatus.loading;
-    errorMessage = null;
-    notifyListeners();
+  List<Idea> get ideas {
+    final query = searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return _allIdeas;
+    return _allIdeas.where((idea) {
+      final haystack = [
+        idea.title,
+        idea.description,
+        ...idea.skills,
+        ...idea.categories,
+      ].join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList(growable: false);
+  }
+
+  Future<void> load({bool silent = false}) async {
+    if (!silent) {
+      status = HomeStatus.loading;
+      errorMessage = null;
+      notifyListeners();
+    }
 
     try {
       final loadedCategories = await _getCategories();
       final loadedIdeas = await _getIdeas(category: selectedCategory);
 
       categories = loadedCategories;
-      ideas = loadedIdeas;
+      _allIdeas = loadedIdeas;
       status = HomeStatus.ready;
     } catch (error) {
       status = HomeStatus.error;
-      errorMessage = error.toString();
+      errorMessage = 'No se pudo cargar el feed. Revisa tu conexión.';
     }
 
     notifyListeners();
@@ -51,13 +68,25 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      ideas = await _getIdeas(category: category);
+      _allIdeas = await _getIdeas(category: category);
       status = HomeStatus.ready;
     } catch (error) {
       status = HomeStatus.error;
-      errorMessage = error.toString();
+      errorMessage = 'No se pudo filtrar. Intenta de nuevo.';
     }
 
+    notifyListeners();
+  }
+
+  void setSearchQuery(String value) {
+    if (value == searchQuery) return;
+    searchQuery = value;
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    if (searchQuery.isEmpty) return;
+    searchQuery = '';
     notifyListeners();
   }
 

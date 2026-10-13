@@ -1,7 +1,7 @@
-import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
-import './profile_screen.dart';
+import 'package:provider/provider.dart';
 
+import './profile_screen.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../application/presentation/screens/project_detail_screen.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
@@ -16,7 +16,6 @@ import '../widgets/idea_card.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.viewModel});
 
-  /// Permite inyectar un ViewModel en tests.
   final HomeViewModel? viewModel;
 
   @override
@@ -26,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final HomeViewModel _viewModel;
   late final bool _ownsViewModel;
+  late final TextEditingController _searchCtrl;
   AuthViewModel? _auth;
 
   @override
@@ -36,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.viewModel ?? context.read<HomeViewModel Function()>()();
     _viewModel.addListener(_onViewModelChanged);
     _viewModel.load();
+    _searchCtrl = TextEditingController();
 
     _auth = context.read<AuthViewModel?>();
     _auth?.addListener(_onAuthChanged);
@@ -54,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _viewModel.removeListener(_onViewModelChanged);
     _auth?.removeListener(_onAuthChanged);
+    _searchCtrl.dispose();
     if (_ownsViewModel) {
       _viewModel.dispose();
     }
@@ -87,7 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(builder: (_) => destination),
     );
-    // Crear o gestionar proyectos desde el perfil cambia el feed.
     if (mounted && destination is ProfileView) _viewModel.load();
   }
 
@@ -108,6 +109,77 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || created == null) return;
     _showMessage('Proyecto "${created.title}" publicado');
     _viewModel.load();
+  }
+
+  void _openNotifications() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: NodoColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: NodoColors.chipBorder,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  size: 40,
+                  color: NodoColors.primary,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Bandeja de notificaciones',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Aquí verás nuevas postulaciones a tus proyectos y avances del equipo. Por ahora no tienes avisos pendientes.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: NodoColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: NodoColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Entendido',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -153,8 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () =>
-                        _showMessage('Notificaciones (próximamente)'),
+                    onPressed: _openNotifications,
+                    tooltip: 'Notificaciones',
                     icon: const Icon(
                       Icons.notifications_none_rounded,
                       color: NodoColors.textPrimary,
@@ -179,14 +251,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: vm.setSearchQuery,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Buscar por título, habilidad…',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: vm.searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            vm.clearSearch();
+                          },
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                  filled: true,
+                  fillColor: NodoColors.surface,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
             if (vm.categories.isNotEmpty)
               CategoryFilter(
                 categories: vm.categories,
                 selected: vm.selectedCategory,
                 onSelected: vm.selectCategory,
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Expanded(child: _buildBody(vm)),
           ],
         ),
@@ -227,32 +326,57 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (vm.ideas.isEmpty) {
-      return const Center(
-        child: Text(
-          'No hay ideas en esta categoría',
-          style: TextStyle(color: NodoColors.textSecondary),
+      return RefreshIndicator(
+        color: NodoColors.primary,
+        onRefresh: () => vm.load(silent: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 120),
+            Icon(
+              vm.searchQuery.isEmpty
+                  ? Icons.inbox_outlined
+                  : Icons.search_off_rounded,
+              size: 40,
+              color: NodoColors.textSecondary,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              vm.searchQuery.isEmpty
+                  ? 'No hay ideas en esta categoría'
+                  : 'Sin resultados para “${vm.searchQuery.trim()}”',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: NodoColors.textSecondary),
+            ),
+          ],
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-      itemCount: vm.ideas.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (context, index) {
-        final idea = vm.ideas[index];
-        return IdeaCard(
-          idea: idea,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProjectDetailScreen(idea: idea),
-              ),
-            );
-          },
-        );
-      },
+    return RefreshIndicator(
+      color: NodoColors.primary,
+      onRefresh: () => vm.load(silent: true),
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+        itemCount: vm.ideas.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 14),
+        itemBuilder: (context, index) {
+          final idea = vm.ideas[index];
+          return IdeaCard(
+            idea: idea,
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProjectDetailScreen(idea: idea),
+                ),
+              );
+              if (mounted) vm.load(silent: true);
+            },
+          );
+        },
+      ),
     );
   }
 }
