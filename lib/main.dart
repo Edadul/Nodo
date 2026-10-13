@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/db/db_interface.dart';
 import 'core/db/roble_database.dart';
 import 'core/di/app_module.dart';
 import 'core/theme/nodo_theme.dart';
+import 'demo/demo_database.dart';
+import 'demo/demo_mode.dart';
 import 'features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'features/home/presentation/screens/home_screen.dart';
 
@@ -13,8 +16,8 @@ class NodoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nodo',
-      debugShowCheckedModeBanner: false,
+      title: kUiPreviewMode ? 'Nodo · UI Preview' : 'Nodo',
+      debugShowCheckedModeBanner: kUiPreviewMode,
       theme: buildNodoTheme(),
       home: const _BootstrapGate(),
     );
@@ -54,8 +57,14 @@ class _BootstrapGateState extends State<_BootstrapGate> {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final database = Roble();
-  await database.init();
+  late final IDatabase database;
+  if (kUiPreviewMode) {
+    database = DemoDatabase();
+  } else {
+    final roble = Roble();
+    await roble.init();
+    database = roble;
+  }
 
   runApp(AppModule(database: database, child: const NodoApp()));
 }

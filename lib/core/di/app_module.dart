@@ -43,6 +43,8 @@ import '../../features/projects/domain/usecases/get_project_updates.dart';
 import '../../features/projects/domain/usecases/publish_project_update.dart';
 
 // Auth
+import '../../demo/demo_auth_repository.dart';
+import '../../demo/demo_mode.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/entities/user.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
@@ -215,7 +217,9 @@ class AppModule extends StatelessWidget {
         ...ApplicantsModule.providers,
         ...ProjectUpdatesModule.providers,
         Provider<AuthRepository>(
-          create: (_) => AuthRepositoryImpl(Roble.robleDatabase),
+          create: (_) => kUiPreviewMode
+              ? DemoAuthRepository()
+              : AuthRepositoryImpl(Roble.robleDatabase),
         ),
         ChangeNotifierProvider<AuthViewModel>(
           create: (context) =>
