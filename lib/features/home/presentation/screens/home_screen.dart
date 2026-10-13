@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import './profile_screen.dart';
+import '../../../../core/config/app_flags.dart';
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../application/presentation/screens/project_detail_screen.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
@@ -112,9 +113,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openNotifications() {
+    final previewItems = kUiPreviewMode
+        ? const [
+            (
+              'Nueva postulación',
+              'Luis Pérez quiere unirse a Huerta urbana',
+            ),
+            (
+              'Avance publicado',
+              'Primera siembra lista en tu proyecto',
+            ),
+            (
+              'Cupo ocupado',
+              'María Gómez fue aceptada en Huerta urbana',
+            ),
+          ]
+        : const <(String, String)>[];
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: NodoColors.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -134,12 +153,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Icon(
-                  Icons.notifications_none_rounded,
-                  size: 40,
-                  color: NodoColors.primary,
-                ),
-                const SizedBox(height: 12),
                 const Text(
                   'Bandeja de notificaciones',
                   style: TextStyle(
@@ -147,16 +160,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Aquí verás nuevas postulaciones a tus proyectos y avances del equipo. Por ahora no tienes avisos pendientes.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: NodoColors.textSecondary,
-                    height: 1.4,
+                const SizedBox(height: 16),
+                if (previewItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Aquí verás nuevas postulaciones a tus proyectos y avances del equipo. Por ahora no tienes avisos pendientes.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: NodoColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  )
+                else
+                  ...previewItems.map(
+                    (item) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        backgroundColor: NodoColors.primaryMuted,
+                        child: Icon(
+                          Icons.notifications_rounded,
+                          color: NodoColors.primary,
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(
+                        item.$1,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(item.$2),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -169,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     child: const Text(
-                      'Entendido',
+                      'Cerrar',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
