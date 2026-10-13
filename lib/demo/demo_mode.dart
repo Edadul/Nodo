@@ -1,6 +1,4 @@
-/// Activa datos de prueba en memoria (rama ui-preview).
-/// En `app-testing` / producción debe permanecer en `false`.
-const bool kUiPreviewMode = true;
+﻿export '../core/config/app_flags.dart' show kUiPreviewMode;
 
 /// Usuario demo dueño de varios proyectos del seed.
 const String kDemoCreatorId = 'demo-creator';
