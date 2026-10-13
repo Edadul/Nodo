@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:nodo/main.dart';
 import 'package:nodo/features/auth/presentation/viewmodels/auth_view_model.dart';
-import 'package:nodo/features/home/data/datasources/mock_idea_datasource.dart';
+import 'support/fake_idea_datasource.dart';
 import 'package:nodo/features/home/data/repositories/idea_repository_impl.dart';
 import 'package:nodo/features/home/domain/usecases/get_ideas.dart';
 import 'package:nodo/features/home/domain/usecases/get_categories.dart';
@@ -15,7 +15,7 @@ import 'support/seed.dart';
 
 void main() {
   Future<Widget> createTestApp() async {
-    final ideaRepository = IdeaRepositoryImpl(MockIdeaDataSource());
+    final ideaRepository = IdeaRepositoryImpl(FakeIdeaDataSource());
     final getIdeas = GetIdeas(ideaRepository);
     final getCategories = GetCategories(ideaRepository);
 

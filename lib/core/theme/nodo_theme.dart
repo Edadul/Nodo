@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Paleta y tipografía alineadas al prototipo Figma (Screen1_Feed).
 abstract final class NodoColors {
@@ -25,14 +26,16 @@ ThemeData buildNodoTheme() {
       brightness: Brightness.light,
     ),
     scaffoldBackgroundColor: NodoColors.background,
-    fontFamily: 'Segoe UI',
+  );
+
+  final textTheme = GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
+    bodyColor: NodoColors.textPrimary,
+    displayColor: NodoColors.textPrimary,
   );
 
   return base.copyWith(
-    textTheme: base.textTheme.apply(
-      bodyColor: NodoColors.textPrimary,
-      displayColor: NodoColors.textPrimary,
-    ),
+    textTheme: textTheme,
+    primaryTextTheme: textTheme,
     appBarTheme: const AppBarTheme(
       backgroundColor: NodoColors.background,
       foregroundColor: NodoColors.textPrimary,

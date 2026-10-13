@@ -9,7 +9,6 @@ import '../../../../core/theme/nodo_theme.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
 import '../../../application/presentation/screens/project_detail_admin_screen.dart';
 import '../../../project_creation/presentation/screens/create_project_screen.dart';
-import '../../data/mock_profile.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/entities/idea.dart';
 import '../../domain/entities/profile.dart';
@@ -176,13 +175,19 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingProfile) {
-      // Mientras se carga el perfil real no enseñamos la cuenda de ejemplo ni
-      // la mock: mostramos una pantalla de carga para que no «parpadee»
-      // durante un instante tras iniciar sesión.
       return const _ProfileLoadingView();
     }
 
-    final profile = _profile ?? profile1;
+    final profile = _profile ??
+        const Profile(
+          name: 'Invitado',
+          username: '@invitado',
+          bio: 'Explora proyectos o inicia sesión',
+          avatar: '',
+          posts: 0,
+          followers: 0,
+          favorites: 0,
+        );
 
     return Scaffold(
       backgroundColor: NodoColors.background,
