@@ -45,16 +45,24 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       idea.gradientColors.map(Color.new).toList(growable: false);
 
   void _loadUpdates() {
-    _updates = context.read<GetProjectUpdates?>()?.call(idea.id) ??
-        Future.value(const <ProjectUpdate>[]);
+    try {
+      _updates = context.read<GetProjectUpdates>().call(idea.id);
+    } catch (_) {
+      _updates = Future.value(const <ProjectUpdate>[]);
+    }
   }
 
   Future<Application?>? _applicationFor(User user) {
     if (_loadedForUserId != user.id) {
       _loadedForUserId = user.id;
-      _myApplication = context
-          .read<GetMyApplication?>()
-          ?.call(projectId: idea.id, user: user);
+      try {
+        _myApplication = context.read<GetMyApplication>().call(
+              projectId: idea.id,
+              user: user,
+            );
+      } catch (_) {
+        _myApplication = Future.value(null);
+      }
     }
     return _myApplication;
   }
@@ -398,7 +406,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     VoidCallback? onPressed,
     bool loading = false,
   }) {
-    final text = loading
+    final child = loading
         ? const SizedBox(
             width: 20,
             height: 20,
@@ -409,19 +417,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           );
 
+    final style = FilledButton.styleFrom(
+      backgroundColor: NodoColors.primary,
+      disabledBackgroundColor: NodoColors.primaryMuted,
+      disabledForegroundColor: NodoColors.primaryDark,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+    );
+
+    if (icon == null || loading) {
+      return FilledButton(
+        onPressed: onPressed,
+        style: style,
+        child: child,
+      );
+    }
+
     return FilledButton.icon(
       onPressed: onPressed,
-      icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 18),
-      label: text,
-      style: FilledButton.styleFrom(
-        backgroundColor: NodoColors.primary,
-        disabledBackgroundColor: NodoColors.primaryMuted,
-        disabledForegroundColor: NodoColors.primaryDark,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-      ),
+      icon: Icon(icon, size: 18),
+      label: child,
+      style: style,
     );
   }
 }

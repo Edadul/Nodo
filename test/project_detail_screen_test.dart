@@ -71,8 +71,11 @@ void main() {
   testWidgets('usuario nuevo puede postularse si hay cupos', (tester) async {
     await pump(tester, newUser);
     expect(find.text('Postularme'), findsOneWidget);
+  });
 
+  testWidgets('proyecto lleno no permite postularse', (tester) async {
     await pump(tester, newUser, idea: _idea(filled: 2, total: 2));
     expect(find.text('Sin cupos disponibles'), findsOneWidget);
+    expect(find.text('Postularme'), findsNothing);
   });
 }
