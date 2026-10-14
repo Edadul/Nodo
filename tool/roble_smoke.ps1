@@ -2,7 +2,8 @@ $ErrorActionPreference = 'Continue'
 $baseAuth = 'https://roble-api.openlab.uninorte.edu.co/auth/nodo_a9a72e0eab'
 $baseDb = 'https://roble-api.openlab.uninorte.edu.co/database/nodo_a9a72e0eab'
 $email = "nodo.auto.$(Get-Date -Format 'yyyyMMddHHmmss')@test.local"
-$password = 'NodoQA123!'
+# Clave efímera por corrida (no hardcodear secretos en el repo).
+$password = -join ((48..57 + 65..90 + 97..122) | Get-Random -Count 16 | ForEach-Object { [char]$_ })
 $name = 'Auto Tester'
 $results = New-Object System.Collections.Generic.List[string]
 
