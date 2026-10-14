@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/db/roble_database.dart';
 import 'core/di/app_module.dart';
 import 'core/theme/nodo_theme.dart';
+import 'env/env.dart';
 import 'features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'features/home/presentation/screens/home_screen.dart';
 
@@ -53,6 +54,9 @@ class _BootstrapGateState extends State<_BootstrapGate> {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Env.load();
+  Roble.configure();
 
   final database = Roble();
   await database.init();

@@ -4,15 +4,26 @@ import '../../env/env.dart';
 import 'db_interface.dart';
 
 class Roble implements IDatabase {
-  static final robleDatabase = RobleApiDataBase(
-    config: RobleApiConfig.fromContract(
-      baseUrl: Env.baseUrl,
-      contractId: Env.contractId,
-    ),
-  );
+  static RobleApiDataBase? _robleDatabase;
 
-  /// La sesión real la abre [AuthRepository.restoreOrGuest].
-  /// Aquí solo se asegura que el cliente exista.
+  static RobleApiDataBase get robleDatabase {
+    final db = _robleDatabase;
+    if (db == null) {
+      throw StateError('Llama Roble.configure() después de Env.load().');
+    }
+    return db;
+  }
+
+  /// Debe llamarse una vez en [main] tras [Env.load].
+  static void configure() {
+    _robleDatabase = RobleApiDataBase(
+      config: RobleApiConfig.fromContract(
+        baseUrl: Env.baseUrl,
+        contractId: Env.contractId,
+      ),
+    );
+  }
+
   Future<void> init() async {
     // no-op: bootstrap de auth ocurre en AuthViewModel.bootstrap()
   }
@@ -22,7 +33,6 @@ class Roble implements IDatabase {
     String tableName, {
     Map<String, dynamic>? filters,
   }) {
-    // Sin sesión (ni guest ni anónimo): lee tablas públicas.
     if (!robleDatabase.isLoggedIn) {
       return robleDatabase.publicRead(tableName, filters: filters);
     }

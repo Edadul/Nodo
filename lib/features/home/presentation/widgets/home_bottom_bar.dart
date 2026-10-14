@@ -32,8 +32,8 @@ class HomeBottomBar extends StatelessWidget {
               color: NodoColors.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 20,
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -43,8 +43,8 @@ class HomeBottomBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _NavItem(
-                  icon: Icons.home_rounded,
-                  label: 'Inicio',
+                  icon: Icons.explore_rounded,
+                  label: 'Explorar',
                   selected: currentIndex == 0,
                   onTap: () => onTap(0),
                 ),
@@ -110,22 +110,29 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            onPressed: onTap,
-            icon: Icon(
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
               icon,
               color: selected ? NodoColors.primary : NodoColors.navInactive,
-              size: 28,
+              size: 26,
             ),
-          ),
-          Text(label, style: TextStyle(fontSize: 12)),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? NodoColors.primary : NodoColors.navInactive,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

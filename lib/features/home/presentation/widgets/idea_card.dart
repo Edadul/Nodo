@@ -109,12 +109,13 @@ class IdeaCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: idea.skills
-                          .map(
-                            (skill) => Container(
+                    if (idea.skills.isNotEmpty)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final skill in idea.skills.take(4))
+                            Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 5,
@@ -132,9 +133,27 @@ class IdeaCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          )
-                          .toList(),
-                    ),
+                          if (idea.skills.length > 4)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: NodoColors.primaryMuted,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Text(
+                                '+${idea.skills.length - 4}',
+                                style: const TextStyle(
+                                  color: NodoColors.primaryDark,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     const SizedBox(height: 14),
                     Row(
                       children: [
