@@ -3,8 +3,13 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/db/db_interface.dart';
 import '../../../../core/theme/nodo_theme.dart';
+import '../../../applicants/domain/entities/applicant_status.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
+import '../../../applicants/presentation/widgets/applicant_status_badge.dart';
+import '../../../application/domain/entities/project_participation.dart';
+import '../../../application/domain/usecases/get_my_participations.dart';
 import '../../../application/presentation/screens/project_detail_admin_screen.dart';
+import '../../../application/presentation/screens/project_detail_screen.dart';
 import '../../../auth/domain/entities/user.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
@@ -27,6 +32,7 @@ class _ProfileViewState extends State<ProfileView> {
   int _selectedTab = 0;
   bool _notificationsEnabled = true;
   List<Idea> _myProjects = [];
+  List<ProjectParticipation> _participations = [];
   bool _isLoadingProjects = true;
 
   Profile? _profile;
@@ -35,45 +41,59 @@ class _ProfileViewState extends State<ProfileView> {
 
   AuthViewModel? get _auth => context.read<AuthViewModel?>();
 
+  int get _joinedCount =>
+      _participations.where((p) => p.isMember).length;
+
   @override
   void initState() {
     super.initState();
     _load();
   }
 
-  /// El perfil primero: los proyectos se filtran con el usuario de la sesión.
+  /// El perfil primero: luego proyectos creados y postulaciones del usuario.
   Future<void> _load() async {
     await _loadUserProfile();
-    await _loadMyProjects();
+    await Future.wait([_loadMyProjects(), _loadParticipations()]);
   }
 
   Future<void> _loadMyProjects() async {
     final creatorId = _auth?.signedInUser?.id;
-    // En sesión pública nadie es dueño de nada: no hay proyectos que
-    // administrar.
     if (creatorId == null) {
-      if (mounted) setState(() => _isLoadingProjects = false);
+      if (mounted) {
+        setState(() {
+          _myProjects = [];
+          _isLoadingProjects = false;
+        });
+      }
       return;
     }
 
     try {
       final ideas = await context.read<GetIdeas>()();
-      if (mounted) {
-        // `projects.creator_id` → `users.id` → el mismo id de la sesión.
-        final myProjects = ideas
+      if (!mounted) return;
+      setState(() {
+        _myProjects = ideas
             .where((idea) => idea.isCreatedBy(creatorId))
             .toList(growable: false);
-        setState(() {
-          _myProjects = myProjects;
-          _isLoadingProjects = false;
-        });
-      }
+        _isLoadingProjects = false;
+      });
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isLoadingProjects = false;
-        });
-      }
+      if (mounted) setState(() => _isLoadingProjects = false);
+    }
+  }
+
+  Future<void> _loadParticipations() async {
+    final user = _auth?.signedInUser;
+    if (user == null) {
+      if (mounted) setState(() => _participations = []);
+      return;
+    }
+
+    try {
+      final items = await context.read<GetMyParticipations>()(user);
+      if (mounted) setState(() => _participations = items);
+    } catch (_) {
+      if (mounted) setState(() => _participations = []);
     }
   }
 
@@ -154,7 +174,7 @@ class _ProfileViewState extends State<ProfileView> {
         ];
       });
     }
-    await _loadMyProjects();
+    await Future.wait([_loadMyProjects(), _loadParticipations()]);
   }
 
   Future<void> _openApplicants(Idea idea) async {
@@ -164,8 +184,19 @@ class _ProfileViewState extends State<ProfileView> {
         builder: (_) => ApplicantsListScreen(projectId: idea.id),
       ),
     );
-    // Aceptar postulaciones cambia los cupos ocupados.
-    if (mounted) _loadMyProjects();
+    if (mounted) {
+      await Future.wait([_loadMyProjects(), _loadParticipations()]);
+    }
+  }
+
+  Future<void> _openJoinedProject(ProjectParticipation participation) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProjectDetailScreen(idea: participation.project),
+      ),
+    );
+    if (mounted) await _loadParticipations();
   }
 
   Future<void> _openCreateProject() async {
@@ -231,6 +262,8 @@ class _ProfileViewState extends State<ProfileView> {
           const SizedBox(height: 16),
           if (_selectedTab == 0)
             _buildProjectsSection()
+          else if (_selectedTab == 1)
+            _buildJoinedSection()
           else
             _buildSettingsSection(),
           const SizedBox(height: 32),
@@ -300,9 +333,9 @@ class _ProfileViewState extends State<ProfileView> {
           if (!_isLoadingProjects && !_isPublicSession) ...[
             const SizedBox(height: 8),
             Text(
-              _myProjects.length == 1
-                  ? '1 proyecto propio'
-                  : '${_myProjects.length} proyectos propios',
+              '${_myProjects.length} creados · $_joinedCount en equipo'
+              '${_participations.length > _joinedCount ? ' · ${_participations.length - _joinedCount} en revisión' : ''}',
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
                 color: NodoColors.primaryDark,
@@ -518,12 +551,9 @@ class _ProfileViewState extends State<ProfileView> {
       padding: const EdgeInsets.all(3),
       child: Row(
         children: [
-          Expanded(
-            child: _tabButton('Mis proyectos', 0),
-          ),
-          Expanded(
-            child: _tabButton('Cuenta', 1),
-          ),
+          Expanded(child: _tabButton('Creados', 0)),
+          Expanded(child: _tabButton('Unidos', 1)),
+          Expanded(child: _tabButton('Cuenta', 2)),
         ],
       ),
     );
@@ -560,6 +590,157 @@ class _ProfileViewState extends State<ProfileView> {
             color: isSelected ? NodoColors.primary : NodoColors.textSecondary,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
             fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJoinedSection() {
+    if (_isLoadingProjects) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(color: NodoColors.primary),
+        ),
+      );
+    }
+
+    if (_isPublicSession) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Inicia sesión para ver los proyectos a los que te postulas o ya te uniste.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: NodoColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    if (_participations.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(
+              Icons.handshake_outlined,
+              size: 48,
+              color: NodoColors.navInactive,
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Aún no te has postulado a ningún proyecto.\nExplora el feed y únete a uno.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: NodoColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final item in _participations) ...[
+          _buildJoinedCard(item),
+          const SizedBox(height: 14),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildJoinedCard(ProjectParticipation item) {
+    final idea = item.project;
+    final gradientColors =
+        idea.gradientColors.map(Color.new).toList(growable: false);
+    final subtitle = switch (item.status) {
+      ApplicantStatus.accepted => 'Formas parte del equipo',
+      ApplicantStatus.pending => 'Esperando respuesta del creador',
+      ApplicantStatus.rejected => 'Postulación no aceptada',
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        color: NodoColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: NodoColors.chipBorder.withValues(alpha: 0.6)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _openJoinedProject(item),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: gradientColors,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.groups_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            idea.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: NodoColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: NodoColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ApplicantStatusBadge(status: item.status),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  idea.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: NodoColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -850,7 +1031,7 @@ class _ProfileViewState extends State<ProfileView> {
                 onTap: () => _showInfoSheet(
                   title: 'Cómo usar Nodo',
                   body:
-                      'Explora proyectos en el feed, postúlate desde el detalle y gestiona los tuyos aquí: revisa postulaciones, cambia el estado y publica avances para el equipo.',
+                      'Explora proyectos en el feed y postúlate desde el detalle. En Creados administras los tuyos; en Unidos ves pendientes y los equipos a los que ya perteneces. Como integrante puedes abrir el proyecto y publicar avances.',
                 ),
               ),
             ],

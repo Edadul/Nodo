@@ -59,7 +59,7 @@ void main() {
 
   testWidgets('el creador administra en vez de postularse', (tester) async {
     await pump(tester, creator);
-    expect(find.text('Administrar proyecto'), findsOneWidget);
+    expect(find.text('Gestionar equipo y estado'), findsOneWidget);
     expect(find.text('Postularme'), findsNothing);
   });
 

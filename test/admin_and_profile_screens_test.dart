@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:nodo/core/services/catalog_service.dart';
+import 'package:nodo/core/services/user_profile_service.dart';
 import 'package:nodo/core/theme/nodo_theme.dart';
+import 'package:nodo/features/applicants/data/datasources/api_applicant_datasource.dart';
+import 'package:nodo/features/applicants/data/repositories/applicant_repository_impl.dart';
+import 'package:nodo/features/applicants/domain/usecases/get_project_team.dart';
 import 'package:nodo/features/applicants/presentation/viewmodels/applicants_view_model.dart';
+import 'package:nodo/features/application/data/datasources/api_application_datasource.dart';
+import 'package:nodo/features/application/data/repositories/application_repository_impl.dart';
+import 'package:nodo/features/application/domain/usecases/get_my_participations.dart';
 import 'package:nodo/features/application/presentation/screens/project_detail_admin_screen.dart';
 import 'package:nodo/features/auth/domain/entities/user.dart';
 import 'package:nodo/features/auth/presentation/viewmodels/auth_view_model.dart';
@@ -15,17 +23,33 @@ import 'package:nodo/features/home/presentation/screens/profile_screen.dart';
 
 import 'support/applicants.dart';
 import 'support/fake_auth.dart';
+import 'support/fake_database.dart';
 import 'support/seed.dart';
 
-Widget _wrap(Widget child, AuthViewModel auth) {
+Widget _wrap(Widget child, AuthViewModel auth, {FakeDatabase? db}) {
+  final database = db ?? seededDatabase();
+  final getIdeas = GetIdeas(IdeaRepositoryImpl(FakeIdeaDataSource()));
+  final applications = ApplicationRepositoryImpl(
+    ApiApplicationDataSource(
+      database,
+      CatalogService(database),
+      UserProfileService(database),
+    ),
+  );
+  final applicants = ApplicantRepositoryImpl(
+    ApiApplicantDataSource(database, CatalogService(database)),
+  );
+
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<AuthViewModel>.value(value: auth),
-      Provider<GetIdeas>.value(
-        value: GetIdeas(IdeaRepositoryImpl(FakeIdeaDataSource())),
+      Provider<GetIdeas>.value(value: getIdeas),
+      Provider<GetMyParticipations>.value(
+        value: GetMyParticipations(applications, getIdeas),
       ),
+      Provider<GetProjectTeam>.value(value: GetProjectTeam(applicants)),
       Provider<ApplicantsViewModel Function(String, User?)>.value(
-        value: applicantsViewModelFactory(seededDatabase()),
+        value: applicantsViewModelFactory(database),
       ),
     ],
     child: MaterialApp(theme: buildNodoTheme(), home: child),
@@ -58,8 +82,9 @@ void main() {
     expect(find.text('TECNOLOGÍA'), findsOneWidget);
     expect(find.text('Plataforma Nodo'), findsOneWidget);
     expect(find.text('0 de 2 cupos'), findsOneWidget);
+    expect(find.text('Equipo'), findsOneWidget);
 
-    await tester.tap(find.text('Ver Postulaciones'));
+    await tester.tap(find.text('Postulaciones'));
     await tester.pumpAndSettle();
 
     expect(find.text('2 postulaciones recibidas'), findsOneWidget);
@@ -77,13 +102,15 @@ void main() {
     await tester.pumpWidget(_wrap(const ProfileView(), auth));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mi Perfil'), findsOneWidget);
+    expect(find.text('Mi perfil'), findsOneWidget);
     expect(find.text('Carlos Eduardo'), findsWidgets);
     expect(find.text('Huerta urbana colaborativa'), findsOneWidget);
     // Idea de otro creador: no aparece.
     expect(find.text('Marketplace de freelancers universitarios'), findsNothing);
-    expect(find.text('Admin'), findsWidgets);
+    expect(find.text('Postulaciones'), findsWidgets);
     expect(find.text('3 de 6 cupos'), findsOneWidget);
+    expect(find.text('Creados'), findsOneWidget);
+    expect(find.text('Unidos'), findsOneWidget);
   });
 
   testWidgets('ProfileView en sesión pública no muestra proyectos ajenos', (

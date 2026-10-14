@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../applicants/domain/entities/applicant_status.dart';
+import '../../../applicants/domain/entities/team_member.dart';
+import '../../../applicants/domain/usecases/get_project_team.dart';
+import '../../../applicants/presentation/widgets/project_team_section.dart';
 import '../../../auth/domain/entities/user.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
@@ -29,6 +32,7 @@ class ProjectDetailScreen extends StatefulWidget {
 class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Future<Application?>? _myApplication;
   Future<List<ProjectUpdate>>? _updates;
+  Future<List<TeamMember>>? _team;
   String? _loadedForUserId;
   late Idea _idea;
 
@@ -37,6 +41,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     super.initState();
     _idea = widget.idea;
     _loadUpdates();
+    _loadTeam();
   }
 
   Idea get idea => _idea;
@@ -49,6 +54,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       _updates = context.read<GetProjectUpdates>().call(idea.id);
     } catch (_) {
       _updates = Future.value(const <ProjectUpdate>[]);
+    }
+  }
+
+  void _loadTeam() {
+    try {
+      _team = context.read<GetProjectTeam>()(idea.id).then((t) => t.members);
+    } catch (_) {
+      _team = Future.value(const <TeamMember>[]);
     }
   }
 
@@ -71,10 +84,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     setState(() => _loadedForUserId = null);
   }
 
-  Future<void> _openPublishUpdate() async {
+  Future<void> _openPublishUpdate({required bool allowStatusChange}) async {
     final update = await Navigator.push<ProjectUpdate>(
       context,
-      MaterialPageRoute(builder: (_) => PublishUpdateScreen(idea: idea)),
+      MaterialPageRoute(
+        builder: (_) => PublishUpdateScreen(
+          idea: idea,
+          allowStatusChange: allowStatusChange,
+        ),
+      ),
     );
     if (!mounted || update == null) return;
     setState(() {
@@ -82,6 +100,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         _idea = _idea.copyWith(status: update.status);
       }
       _loadUpdates();
+      _loadTeam();
     });
   }
 
@@ -167,6 +186,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Widget _buildBody(BuildContext context) {
     final user = context.watch<AuthViewModel?>()?.signedInUser;
     final isOwner = user != null && idea.isCreatedBy(user.id);
+    final myApp = user == null ? null : _applicationFor(user);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,65 +260,69 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               )
               .toList(),
         ),
-        const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: NodoColors.surface,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.group_outlined,
-                size: 20,
-                color: NodoColors.textSecondary,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                idea.spotsLabel,
-                style: const TextStyle(
-                  color: NodoColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 28),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Avances del proyecto',
-                style: TextStyle(
-                  color: NodoColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            if (isOwner)
-              TextButton.icon(
-                onPressed: _openPublishUpdate,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Publicar'),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        FutureBuilder<List<ProjectUpdate>>(
-          future: _updates,
+        FutureBuilder<List<TeamMember>>(
+          future: _team,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: 16),
                 child: Center(child: CircularProgressIndicator()),
               );
             }
-            return ProjectUpdatesTimeline(
-              updates: snapshot.data ?? const [],
+            return ProjectTeamSection(
+              members: snapshot.data ?? const [],
+              spotsLabel: idea.spotsLabel,
+            );
+          },
+        ),
+        const SizedBox(height: 28),
+        FutureBuilder<Application?>(
+          future: myApp,
+          builder: (context, appSnap) {
+            final isMember =
+                isOwner || appSnap.data?.status == ApplicantStatus.accepted;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Avances del proyecto',
+                        style: TextStyle(
+                          color: NodoColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (isMember)
+                      TextButton.icon(
+                        onPressed: () => _openPublishUpdate(
+                          allowStatusChange: isOwner,
+                        ),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Publicar'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                FutureBuilder<List<ProjectUpdate>>(
+                  future: _updates,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    return ProjectUpdatesTimeline(
+                      updates: snapshot.data ?? const [],
+                    );
+                  },
+                ),
+              ],
             );
           },
         ),
@@ -375,6 +399,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
         final application = snapshot.data;
         if (application != null) {
+          if (application.status == ApplicantStatus.accepted) {
+            return _actionButton(
+              label: 'Publicar avance del equipo',
+              icon: Icons.campaign_outlined,
+              onPressed: () => _openPublishUpdate(allowStatusChange: false),
+            );
+          }
           return _actionButton(label: _statusLabel(application.status));
         }
         if (idea.isFull) {

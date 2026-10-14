@@ -50,8 +50,8 @@ class ApplicationConfirmationScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 'Tu solicitud para unirte a "${idea.title}" fue enviada. '
-                'El líder del proyecto revisará tu postulación y te avisará '
-                'cuando la apruebe.',
+                'Síguela en Perfil → Unidos. Cuando te acepten, verás el '
+                'equipo y podrás publicar avances.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: NodoColors.textSecondary,

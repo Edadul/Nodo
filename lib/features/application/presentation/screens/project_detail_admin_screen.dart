@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
+import '../../../applicants/domain/entities/team_member.dart';
+import '../../../applicants/domain/usecases/get_project_team.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
+import '../../../applicants/presentation/widgets/project_team_section.dart';
 import '../../../home/domain/entities/idea.dart';
 import '../../../projects/domain/entities/project_status.dart';
 import '../../../projects/domain/usecases/update_project_details.dart';
 import '../../../projects/domain/usecases/update_project_status.dart';
+
 class ProjectDetailAdminScreen extends StatefulWidget {
   const ProjectDetailAdminScreen({super.key, required this.idea});
 
@@ -20,23 +24,35 @@ class ProjectDetailAdminScreen extends StatefulWidget {
 class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
   late Idea _idea;
   bool _savingStatus = false;
+  Future<List<TeamMember>>? _team;
 
   @override
   void initState() {
     super.initState();
     _idea = widget.idea;
+    _loadTeam();
   }
 
   List<Color> get _gradientColors =>
       _idea.gradientColors.map(Color.new).toList(growable: false);
 
-  void _navigateToApplicants() {
-    Navigator.push(
+  void _loadTeam() {
+    try {
+      _team = context.read<GetProjectTeam>()(_idea.id).then((t) => t.members);
+    } catch (_) {
+      _team = Future.value(const <TeamMember>[]);
+    }
+  }
+
+  Future<void> _navigateToApplicants() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ApplicantsListScreen(projectId: _idea.id),
       ),
     );
+    if (!mounted) return;
+    setState(_loadTeam);
   }
 
   Future<void> _setStatus(ProjectStatus status) async {
@@ -401,32 +417,6 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.groups_rounded, color: NodoColors.primary),
-                  SizedBox(width: 8),
-                  Text(
-                    'Equipo del Proyecto',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                '$filled de $total cupos',
-                style: const TextStyle(
-                  color: NodoColors.textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
@@ -435,6 +425,23 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
               backgroundColor: NodoColors.chipInactive,
               color: NodoColors.primary,
             ),
+          ),
+          const SizedBox(height: 14),
+          FutureBuilder<List<TeamMember>>(
+            future: _team,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return ProjectTeamSection(
+                members: snapshot.data ?? const [],
+                spotsLabel: '$filled de $total cupos',
+                compact: true,
+              );
+            },
           ),
         ],
       ),

@@ -10,9 +10,16 @@ import '../../domain/usecases/publish_project_update.dart';
 import '../widgets/project_status_badge.dart';
 
 class PublishUpdateScreen extends StatefulWidget {
-  const PublishUpdateScreen({super.key, required this.idea});
+  const PublishUpdateScreen({
+    super.key,
+    required this.idea,
+    this.allowStatusChange = true,
+  });
 
   final Idea idea;
+
+  /// Solo el creador debería cambiar el ciclo de vida del proyecto.
+  final bool allowStatusChange;
 
   @override
   State<PublishUpdateScreen> createState() => _PublishUpdateScreenState();
@@ -56,7 +63,7 @@ class _PublishUpdateScreenState extends State<PublishUpdateScreen> {
         author: user,
         title: _titleCtrl.text,
         body: _bodyCtrl.text,
-        newStatus: _selectedStatus,
+        newStatus: widget.allowStatusChange ? _selectedStatus : null,
         projectRecordId: widget.idea.recordId,
       );
       if (!mounted) return;
@@ -110,30 +117,32 @@ class _PublishUpdateScreenState extends State<PublishUpdateScreen> {
             decoration: _decoration('¿Qué avanzaron o qué necesitan?'),
             textCapitalization: TextCapitalization.sentences,
           ),
-          const SizedBox(height: 20),
-          const Text(
-            '¿Cambió el estado? (opcional)',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _statusChip(null, 'Sin cambio'),
-              ...ProjectStatus.values.map(
-                (status) => _statusChip(status, status.label),
-              ),
-            ],
-          ),
-          if (_selectedStatus != null) ...[
-            const SizedBox(height: 12),
-            Row(
+          if (widget.allowStatusChange) ...[
+            const SizedBox(height: 20),
+            const Text(
+              '¿Cambió el estado? (opcional)',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                const Text('Nuevo estado: '),
-                ProjectStatusBadge(status: _selectedStatus!),
+                _statusChip(null, 'Sin cambio'),
+                ...ProjectStatus.values.map(
+                  (status) => _statusChip(status, status.label),
+                ),
               ],
             ),
+            if (_selectedStatus != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Text('Nuevo estado: '),
+                  ProjectStatusBadge(status: _selectedStatus!),
+                ],
+              ),
+            ],
           ],
           if (_error != null) ...[
             const SizedBox(height: 16),

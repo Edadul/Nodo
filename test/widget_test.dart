@@ -33,13 +33,13 @@ void main() {
     );
   }
 
-  testWidgets('Home muestra título Únete y feed', (tester) async {
+  testWidgets('Home muestra título Nodo y feed', (tester) async {
     await tester.pumpWidget(await createTestApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Únete'), findsOneWidget);
+    expect(find.text('Nodo'), findsOneWidget);
     expect(
-      find.text('Explora ideas en crecimiento o siembra la tuya'),
+      find.text('Proyectos del campus para unirte o crear el tuyo'),
       findsOneWidget,
     );
     expect(find.text('TODAS'), findsOneWidget);
@@ -65,6 +65,9 @@ void main() {
     await tester.tap(find.byIcon(Icons.add_rounded));
     await tester.pumpAndSettle();
 
-    expect(find.text('Accede con tu cuenta específica'), findsOneWidget);
+    expect(
+      find.text('Entra para postularte o crear proyectos'),
+      findsOneWidget,
+    );
   });
 }
