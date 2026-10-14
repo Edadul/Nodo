@@ -14,6 +14,8 @@ import '../../../auth/domain/entities/user.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../project_creation/presentation/screens/create_project_screen.dart';
+import '../../../projects/domain/entities/project_update.dart';
+import '../../../projects/presentation/screens/publish_update_screen.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/entities/idea.dart';
 import '../../domain/entities/profile.dart';
@@ -197,6 +199,33 @@ class _ProfileViewState extends State<ProfileView> {
       ),
     );
     if (mounted) await _loadParticipations();
+  }
+
+  Future<void> _openPublishUpdate(
+    Idea idea, {
+    bool allowStatusChange = true,
+  }) async {
+    final update = await Navigator.push<ProjectUpdate>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PublishUpdateScreen(
+          idea: idea,
+          allowStatusChange: allowStatusChange,
+        ),
+      ),
+    );
+    if (!mounted || update == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Avance publicado')),
+    );
+    if (update.status != null) {
+      setState(() {
+        _myProjects = [
+          for (final p in _myProjects)
+            p.id == idea.id ? p.copyWith(status: update.status) : p,
+        ];
+      });
+    }
   }
 
   Future<void> _openCreateProject() async {
@@ -739,6 +768,23 @@ class _ProfileViewState extends State<ProfileView> {
                     height: 1.4,
                   ),
                 ),
+                if (item.isMember) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => _openPublishUpdate(
+                        idea,
+                        allowStatusChange: false,
+                      ),
+                      icon: const Icon(Icons.campaign_outlined, size: 16),
+                      label: const Text(
+                        'Publicar avance',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -952,6 +998,26 @@ class _ProfileViewState extends State<ProfileView> {
                       ),
                     ),
                     TextButton.icon(
+                      onPressed: () => _openPublishUpdate(idea),
+                      icon: const Icon(
+                        Icons.campaign_outlined,
+                        size: 16,
+                        color: NodoColors.primaryDark,
+                      ),
+                      label: const Text(
+                        'Avance',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: NodoColors.primaryDark,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    TextButton.icon(
                       onPressed: () => _openApplicants(idea),
                       icon: const Icon(
                         Icons.mark_email_unread_outlined,
@@ -967,7 +1033,7 @@ class _ProfileViewState extends State<ProfileView> {
                         ),
                       ),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
@@ -1031,7 +1097,7 @@ class _ProfileViewState extends State<ProfileView> {
                 onTap: () => _showInfoSheet(
                   title: 'Cómo usar Nodo',
                   body:
-                      'Explora proyectos en el feed y postúlate desde el detalle. En Creados administras los tuyos; en Unidos ves pendientes y los equipos a los que ya perteneces. Como integrante puedes abrir el proyecto y publicar avances.',
+                      'Explora y postúlate desde el feed. En Creados gestiona estado, postulaciones y avances. En Unidos ves pendientes y equipos a los que ya perteneces; como integrante también puedes publicar avances.',
                 ),
               ),
             ],

@@ -371,22 +371,49 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
 
     if (idea.isCreatedBy(user.id)) {
-      return _actionButton(
-        label: 'Gestionar equipo y estado',
-        icon: Icons.tune_rounded,
-        onPressed: () async {
-          final updated = await Navigator.push<Idea>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProjectDetailAdminScreen(idea: idea),
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _openPublishUpdate(allowStatusChange: true),
+              icon: const Icon(Icons.campaign_outlined, size: 18),
+              label: const Text(
+                'Avance',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: NodoColors.primaryDark,
+                side: const BorderSide(color: NodoColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
             ),
-          );
-          if (!mounted || updated == null) return;
-          setState(() {
-            _idea = updated;
-            _loadUpdates();
-          });
-        },
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _actionButton(
+              label: 'Gestionar',
+              icon: Icons.tune_rounded,
+              onPressed: () async {
+                final updated = await Navigator.push<Idea>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProjectDetailAdminScreen(idea: idea),
+                  ),
+                );
+                if (!mounted || updated == null) return;
+                setState(() {
+                  _idea = updated;
+                  _loadUpdates();
+                  _loadTeam();
+                });
+              },
+            ),
+          ),
+        ],
       );
     }
 
@@ -430,7 +457,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   String _statusLabel(ApplicantStatus status) {
     switch (status) {
       case ApplicantStatus.pending:
-        return 'Postulación enviada · Pendiente';
+        return 'Pendiente · Síguela en Perfil → Unidos';
       case ApplicantStatus.accepted:
         return 'Ya eres parte del equipo';
       case ApplicantStatus.rejected:

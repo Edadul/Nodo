@@ -83,8 +83,9 @@ void main() {
     expect(find.text('Plataforma Nodo'), findsOneWidget);
     expect(find.text('0 de 2 cupos'), findsOneWidget);
     expect(find.text('Equipo'), findsOneWidget);
+    expect(find.text('Avances del proyecto'), findsOneWidget);
 
-    await tester.tap(find.text('Postulaciones'));
+    await tester.tap(find.text('Postulaciones').last);
     await tester.pumpAndSettle();
 
     expect(find.text('2 postulaciones recibidas'), findsOneWidget);

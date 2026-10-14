@@ -59,13 +59,14 @@ void main() {
 
   testWidgets('el creador administra en vez de postularse', (tester) async {
     await pump(tester, creator);
-    expect(find.text('Gestionar equipo y estado'), findsOneWidget);
+    expect(find.text('Gestionar'), findsOneWidget);
+    expect(find.text('Avance'), findsWidgets);
     expect(find.text('Postularme'), findsNothing);
   });
 
   testWidgets('quien ya se postuló ve su estado', (tester) async {
     await pump(tester, applicantUser);
-    expect(find.text('Postulación enviada · Pendiente'), findsOneWidget);
+    expect(find.text('Pendiente · Síguela en Perfil → Unidos'), findsOneWidget);
   });
 
   testWidgets('usuario nuevo puede postularse si hay cupos', (tester) async {
