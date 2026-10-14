@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
 import '../../domain/entities/project_update.dart';
@@ -9,7 +8,8 @@ class ProjectUpdatesTimeline extends StatelessWidget {
   const ProjectUpdatesTimeline({
     super.key,
     required this.updates,
-    this.emptyMessage = 'Aún no hay actualizaciones. El líder puede publicar el avance del proyecto.',
+    this.emptyMessage =
+        'Aún no hay actualizaciones. El equipo puede publicar el avance del proyecto.',
   });
 
   final List<ProjectUpdate> updates;
@@ -63,7 +63,7 @@ class _TimelineEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date = DateFormat("d MMM · HH:mm", 'es').format(update.createdAt.toLocal());
+    final date = _formatTimelineDate(update.createdAt.toLocal());
 
     return IntrinsicHeight(
       child: Row(
@@ -163,4 +163,27 @@ class _TimelineEntry extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Formato corto en español sin `initializeDateFormatting` (falla en web).
+String _formatTimelineDate(DateTime date) {
+  const months = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  final day = date.day;
+  final month = months[date.month - 1];
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '$day $month · $hour:$minute';
 }
