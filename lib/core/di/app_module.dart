@@ -26,6 +26,7 @@ import '../../features/project_creation/presentation/viewmodels/create_project_v
 import '../../features/application/data/datasources/api_application_datasource.dart';
 import '../../features/application/data/repositories/application_repository_impl.dart';
 import '../../features/application/domain/usecases/get_my_application.dart';
+import '../../features/application/domain/usecases/get_my_participations.dart';
 import '../../features/application/domain/usecases/submit_application.dart';
 import '../../features/application/presentation/viewmodels/application_view_model.dart';
 
@@ -34,6 +35,7 @@ import '../../features/applicants/data/datasources/api_applicant_datasource.dart
 import '../../features/applicants/data/repositories/applicant_repository_impl.dart';
 import '../../features/applicants/domain/usecases/decide_application.dart';
 import '../../features/applicants/domain/usecases/get_applicants.dart';
+import '../../features/applicants/domain/usecases/get_project_team.dart';
 import '../../features/applicants/presentation/viewmodels/applicants_view_model.dart';
 
 // Project updates
@@ -133,6 +135,12 @@ class ApplicationModule {
         Provider<GetMyApplication>(
           create: (context) => GetMyApplication(context.read<ApplicationRepositoryImpl>()),
         ),
+        Provider<GetMyParticipations>(
+          create: (context) => GetMyParticipations(
+            context.read<ApplicationRepositoryImpl>(),
+            context.read<GetIdeas>(),
+          ),
+        ),
         Provider<ApplicationViewModel Function()>(
           create: (context) {
             return () => ApplicationViewModel(
@@ -155,6 +163,10 @@ class ApplicantsModule {
         ),
         Provider<GetApplicants>(
           create: (context) => GetApplicants(context.read<ApplicantRepositoryImpl>()),
+        ),
+        Provider<GetProjectTeam>(
+          create: (context) =>
+              GetProjectTeam(context.read<ApplicantRepositoryImpl>()),
         ),
         Provider<DecideApplication>(
           create: (context) => DecideApplication(context.read<ApplicantRepositoryImpl>()),

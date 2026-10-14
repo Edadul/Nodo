@@ -1,6 +1,7 @@
 import '../../../home/domain/entities/idea.dart';
 import '../../domain/entities/applicant.dart';
 import '../../domain/entities/applicant_status.dart';
+import '../../domain/entities/team_member.dart';
 
 /// Contrato de fuente de datos del feature Applicants (postulantes).
 abstract class ApplicantDataSource {
@@ -9,6 +10,8 @@ abstract class ApplicantDataSource {
   Future<List<Applicant>> fetchApplicantsByProject(String projectId);
 
   Future<Applicant?> fetchApplicant(String applicationId);
+
+  Future<List<TeamMember>> fetchTeamMembers(Idea project);
 
   Future<void> updateApplicationStatus(
     String applicationRecordId,

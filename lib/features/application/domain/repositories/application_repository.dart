@@ -10,5 +10,8 @@ abstract class ApplicationRepository {
   /// Postulación del usuario a ese proyecto, o null si no tiene.
   Future<Application?> findApplication(String projectId, String applicantId);
 
+  /// Todas las postulaciones del usuario (cualquier proyecto).
+  Future<List<Application>> listByApplicant(String applicantId);
+
   Future<Application> submit(Application application, User applicant);
 }

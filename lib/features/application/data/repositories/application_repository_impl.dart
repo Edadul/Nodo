@@ -29,6 +29,11 @@ class ApplicationRepositoryImpl implements ApplicationRepository {
   }
 
   @override
+  Future<List<Application>> listByApplicant(String applicantId) {
+    return _dataSource.fetchApplicationsByApplicant(applicantId);
+  }
+
+  @override
   Future<Application> submit(Application application, User applicant) {
     return _dataSource.insertApplication(application, applicant);
   }

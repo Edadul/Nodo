@@ -36,6 +36,18 @@ class ApiApplicationDataSource implements ApplicationDataSource {
   }
 
   @override
+  Future<List<Application>> fetchApplicationsByApplicant(
+    String applicantId,
+  ) async {
+    final rows = await _database.read('applications', filters: {
+      'applicant_id': applicantId,
+    });
+    final applications = rows.map(_toApplication).toList();
+    applications.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+    return applications;
+  }
+
+  @override
   Future<Application> insertApplication(
     Application application,
     User applicant,

@@ -5,6 +5,7 @@ import '../../../home/data/datasources/project_row_mapper.dart';
 import '../../../home/domain/entities/idea.dart';
 import '../../domain/entities/applicant.dart';
 import '../../domain/entities/applicant_status.dart';
+import '../../domain/entities/team_member.dart';
 import 'applicant_datasource.dart';
 
 class ApiApplicantDataSource implements ApplicantDataSource {
@@ -38,6 +39,46 @@ class ApiApplicantDataSource implements ApplicantDataSource {
     );
     if (rows.isEmpty) return null;
     return (await _toApplicants(rows)).first;
+  }
+
+  @override
+  Future<List<TeamMember>> fetchTeamMembers(Idea project) async {
+    final applicants = await fetchApplicantsByProject(project.id);
+    final accepted = applicants
+        .where((a) => a.status == ApplicantStatus.accepted)
+        .toList(growable: false);
+
+    String creatorName = 'Creador';
+    String? creatorAvatar;
+    if (project.creatorId.isNotEmpty) {
+      final users = await _database.read(
+        'users',
+        filters: {'id': project.creatorId},
+      );
+      if (users.isNotEmpty) {
+        creatorName = RowParsing.text(users.first['name']) ?? creatorName;
+        creatorAvatar = RowParsing.text(users.first['avatar_url']);
+      }
+    }
+
+    return [
+      if (project.creatorId.isNotEmpty)
+        TeamMember(
+          userId: project.creatorId,
+          name: creatorName,
+          isCreator: true,
+          avatarUrl: creatorAvatar,
+        ),
+      for (final applicant in accepted)
+        if (applicant.applicantId != project.creatorId)
+          TeamMember(
+            userId: applicant.applicantId,
+            name: applicant.name,
+            isCreator: false,
+            avatarUrl: applicant.avatarUrl,
+            program: applicant.program,
+          ),
+    ];
   }
 
   @override

@@ -11,5 +11,7 @@ abstract class ApplicationDataSource {
     required String applicantId,
   });
 
+  Future<List<Application>> fetchApplicationsByApplicant(String applicantId);
+
   Future<Application> insertApplication(Application application, User applicant);
 }

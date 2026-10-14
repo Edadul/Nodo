@@ -1,6 +1,7 @@
 import '../../../home/domain/entities/idea.dart';
 import '../../domain/entities/applicant.dart';
 import '../../domain/entities/applicant_status.dart';
+import '../../domain/entities/team_member.dart';
 import '../../domain/repositories/applicant_repository.dart';
 import '../datasources/applicant_datasource.dart';
 
@@ -21,6 +22,11 @@ class ApplicantRepositoryImpl implements ApplicantRepository {
   @override
   Future<Applicant?> getApplicant(String applicationId) =>
       _dataSource.fetchApplicant(applicationId);
+
+  @override
+  Future<List<TeamMember>> getTeamMembers(Idea project) {
+    return _dataSource.fetchTeamMembers(project);
+  }
 
   @override
   Future<void> setStatus(Applicant applicant, ApplicantStatus status) {
