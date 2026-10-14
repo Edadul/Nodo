@@ -22,8 +22,20 @@ abstract final class Env {
     'GUEST_PASSWORD',
   );
 
+  /// Login automático opcional (solo local/CI). No usar en builds de tienda.
+  static const String autoLoginEmail = String.fromEnvironment(
+    'AUTO_LOGIN_EMAIL',
+  );
+
+  static const String autoLoginPassword = String.fromEnvironment(
+    'AUTO_LOGIN_PASSWORD',
+  );
+
   static bool get hasContract => contractId.trim().isNotEmpty;
 
   static bool get hasGuestCredentials =>
       guestEmail.isNotEmpty && guestPassword.isNotEmpty;
+
+  static bool get hasAutoLogin =>
+      autoLoginEmail.isNotEmpty && autoLoginPassword.isNotEmpty;
 }
