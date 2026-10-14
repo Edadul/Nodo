@@ -1,7 +1,9 @@
-import '../../../../core/theme/nodo_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../../../core/theme/nodo_theme.dart';
 import '../viewmodels/auth_view_model.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -153,6 +155,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                   const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      '¿No tienes cuenta? Regístrate',
+                      style: TextStyle(
+                        color: NodoColors.primaryDark,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -1,15 +1,13 @@
-import '../../domain/entities/idea.dart';
-import 'idea_datasource.dart';
+import 'package:nodo/features/home/data/datasources/idea_datasource.dart';
+import 'package:nodo/features/home/domain/entities/idea.dart';
 
-/// Implementación temporal en memoria.
-/// Se usa en tests de widgets en lugar de Roble.
-class MockIdeaDataSource implements IdeaDataSource {
-  MockIdeaDataSource({List<Idea>? seed})
+/// Fuente en memoria solo para tests.
+class FakeIdeaDataSource implements IdeaDataSource {
+  FakeIdeaDataSource({List<Idea>? seed})
       : _ideas = List<Idea>.from(seed ?? _defaultIdeas);
 
   final List<Idea> _ideas;
 
-  /// Creador de las tres primeras ideas de ejemplo.
   static const demoCreatorId = 'demo-user';
 
   static const List<String> _categories = [
@@ -82,7 +80,8 @@ class MockIdeaDataSource implements IdeaDataSource {
   ];
 
   @override
-  Future<List<String>> fetchCategories() async => List.unmodifiable(_categories);
+  Future<List<String>> fetchCategories() async =>
+      List.unmodifiable(_categories);
 
   @override
   Future<List<Idea>> fetchIdeas({String? category}) async {

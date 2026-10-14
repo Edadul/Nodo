@@ -48,12 +48,21 @@ class ApiProjectCreationDataSource implements ProjectCreationDataSource {
       'description': draft.description,
       'total_spots': draft.totalSpots,
       'filled_spots': 0,
+      'status': 'idea',
       'gradient_colors': RowParsing.encodeColors(
         gradients[Random().nextInt(gradients.length)],
       ),
       'created_at': DateTime.now().toUtc().toIso8601String(),
     };
-    final inserted = await _database.insert('projects', data);
+
+    Map<String, dynamic> inserted;
+    try {
+      inserted = await _database.insert('projects', data);
+    } catch (_) {
+      // Si aún no existe la columna status en Roble, reintenta sin ella.
+      final fallback = Map<String, dynamic>.from(data)..remove('status');
+      inserted = await _database.insert('projects', fallback);
+    }
     final row = {...data, ...inserted};
 
     try {

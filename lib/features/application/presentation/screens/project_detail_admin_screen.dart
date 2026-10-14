@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../core/theme/nodo_theme.dart';
 import '../../../applicants/presentation/screens/applicants_list_screen.dart';
 import '../../../home/domain/entities/idea.dart';
-
-enum ProjectStage { idea, desarrollo, cierre }
+import '../../../projects/domain/entities/project_status.dart';
+import '../../../projects/domain/usecases/update_project_details.dart';
+import '../../../projects/domain/usecases/update_project_status.dart';
+import '../../../projects/presentation/widgets/project_status_badge.dart';
 
 class ProjectDetailAdminScreen extends StatefulWidget {
   const ProjectDetailAdminScreen({super.key, required this.idea});
@@ -12,22 +15,147 @@ class ProjectDetailAdminScreen extends StatefulWidget {
   final Idea idea;
 
   @override
-  State<ProjectDetailAdminScreen> createState() => _ProjectDetailAdminScreenState();
+  State<ProjectDetailAdminScreen> createState() =>
+      _ProjectDetailAdminScreenState();
 }
 
 class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
-  ProjectStage _selectedStage = ProjectStage.desarrollo;
+  late Idea _idea;
+  bool _savingStatus = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _idea = widget.idea;
+  }
 
   List<Color> get _gradientColors =>
-      widget.idea.gradientColors.map(Color.new).toList(growable: false);
+      _idea.gradientColors.map(Color.new).toList(growable: false);
 
   void _navigateToApplicants() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ApplicantsListScreen(projectId: widget.idea.id),
+        builder: (_) => ApplicantsListScreen(projectId: _idea.id),
       ),
     );
+  }
+
+  Future<void> _setStatus(ProjectStatus status) async {
+    if (status == _idea.status || _idea.recordId.isEmpty) {
+      setState(() => _idea = _idea.copyWith(status: status));
+      return;
+    }
+
+    setState(() {
+      _savingStatus = true;
+      _idea = _idea.copyWith(status: status);
+    });
+
+    try {
+      await context.read<UpdateProjectStatus>()(
+        projectRecordId: _idea.recordId,
+        status: status,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Estado actualizado a ${status.label}')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo guardar el estado')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingStatus = false);
+    }
+  }
+
+  Future<void> _editProject() async {
+    final titleCtrl = TextEditingController(text: _idea.title);
+    final descCtrl = TextEditingController(text: _idea.description);
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Editar proyecto'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(labelText: 'Título'),
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtrl,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(labelText: 'Descripción'),
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (saved != true || !mounted) {
+      titleCtrl.dispose();
+      descCtrl.dispose();
+      return;
+    }
+
+    final title = titleCtrl.text.trim();
+    final description = descCtrl.text.trim();
+    titleCtrl.dispose();
+    descCtrl.dispose();
+
+    if (title.isEmpty || description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Título y descripción son obligatorios')),
+      );
+      return;
+    }
+
+    if (_idea.recordId.isEmpty) {
+      setState(() => _idea = _idea.copyWith(title: title, description: description));
+      return;
+    }
+
+    try {
+      await context.read<UpdateProjectDetails>()(
+        projectRecordId: _idea.recordId,
+        title: title,
+        description: description,
+      );
+      if (!mounted) return;
+      setState(
+        () => _idea = _idea.copyWith(title: title, description: description),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Proyecto actualizado')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo guardar el proyecto')),
+      );
+    }
   }
 
   @override
@@ -51,6 +179,26 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildStageSelector(),
+                          if (_savingStatus) ...[
+                            const SizedBox(height: 8),
+                            const LinearProgressIndicator(minHeight: 2),
+                          ],
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              ProjectStatusBadge(status: _idea.status),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _idea.status.subtitle,
+                                  style: const TextStyle(
+                                    color: NodoColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 20),
                           _buildProjectInfo(),
                           const SizedBox(height: 24),
@@ -95,7 +243,7 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
           Row(
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(context, _idea),
                 icon: const Icon(
                   Icons.arrow_back_rounded,
                   color: Colors.white,
@@ -104,11 +252,13 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -131,13 +281,14 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  widget.idea.category,
+                  _idea.category,
                   style: const TextStyle(
                     color: NodoColors.primaryDark,
                     fontSize: 12,
@@ -162,23 +313,19 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
       ),
       child: Row(
         children: [
-          _stageChip('Idea', ProjectStage.idea),
-          _stageChip('Desarrollo', ProjectStage.desarrollo),
-          _stageChip('Cierre', ProjectStage.cierre),
+          _stageChip(ProjectStatus.idea),
+          _stageChip(ProjectStatus.inProgress),
+          _stageChip(ProjectStatus.closed),
         ],
       ),
     );
   }
 
-  Widget _stageChip(String title, ProjectStage stage) {
-    final isSelected = _selectedStage == stage;
+  Widget _stageChip(ProjectStatus status) {
+    final isSelected = _idea.status == status;
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedStage = stage;
-          });
-        },
+        onTap: _savingStatus ? null : () => _setStatus(status),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -196,7 +343,7 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
                 : null,
           ),
           child: Text(
-            title,
+            status.label,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: isSelected ? NodoColors.primary : NodoColors.textSecondary,
@@ -214,7 +361,7 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.idea.title,
+          _idea.title,
           style: const TextStyle(
             color: NodoColors.textPrimary,
             fontSize: 24,
@@ -224,7 +371,7 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          widget.idea.description,
+          _idea.description,
           style: const TextStyle(
             color: NodoColors.textSecondary,
             fontSize: 15,
@@ -242,74 +389,30 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
         color: NodoColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: NodoColors.chipBorder.withValues(alpha: 0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: NodoColors.primaryMuted,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.mark_email_unread_rounded,
-                  color: NodoColors.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Postulaciones',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: NodoColors.textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Revisa y decide sobre los candidatos',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: NodoColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: NodoColors.primaryDark,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Activas',
+              Icon(Icons.mark_email_unread_rounded, color: NodoColors.primary),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Postulaciones',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: NodoColors.chipInactive),
+          const SizedBox(height: 8),
+          const Text(
+            'Revisa y decide sobre los candidatos',
+            style: TextStyle(color: NodoColors.textSecondary, fontSize: 13),
+          ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -336,8 +439,8 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
   }
 
   Widget _buildTeamAdminCard() {
-    final filled = widget.idea.filledSpots;
-    final total = widget.idea.totalSpots;
+    final filled = _idea.filledSpots;
+    final total = _idea.totalSpots;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -354,18 +457,13 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(
-                    Icons.groups_rounded,
-                    color: NodoColors.primary,
-                    size: 22,
-                  ),
+                  Icon(Icons.groups_rounded, color: NodoColors.primary),
                   SizedBox(width: 8),
                   Text(
                     'Equipo del Proyecto',
                     style: TextStyle(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
-                      color: NodoColors.textPrimary,
                     ),
                   ),
                 ],
@@ -374,7 +472,6 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
                 '$filled de $total cupos',
                 style: const TextStyle(
                   color: NodoColors.textSecondary,
-                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -411,7 +508,7 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: widget.idea.skills
+          children: _idea.skills
               .map(
                 (skill) => Container(
                   padding: const EdgeInsets.symmetric(
@@ -456,15 +553,8 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
         child: Row(
           children: [
             Expanded(
-              flex: 1,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Editar Proyecto (próximamente)'),
-                    ),
-                  );
-                },
+                onPressed: _editProject,
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Editar'),
                 style: OutlinedButton.styleFrom(

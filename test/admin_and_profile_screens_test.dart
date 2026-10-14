@@ -7,7 +7,7 @@ import 'package:nodo/features/applicants/presentation/viewmodels/applicants_view
 import 'package:nodo/features/application/presentation/screens/project_detail_admin_screen.dart';
 import 'package:nodo/features/auth/domain/entities/user.dart';
 import 'package:nodo/features/auth/presentation/viewmodels/auth_view_model.dart';
-import 'package:nodo/features/home/data/datasources/mock_idea_datasource.dart';
+import 'support/fake_idea_datasource.dart';
 import 'package:nodo/features/home/data/repositories/idea_repository_impl.dart';
 import 'package:nodo/features/home/domain/entities/idea.dart';
 import 'package:nodo/features/home/domain/usecases/get_ideas.dart';
@@ -22,7 +22,7 @@ Widget _wrap(Widget child, AuthViewModel auth) {
     providers: [
       ChangeNotifierProvider<AuthViewModel>.value(value: auth),
       Provider<GetIdeas>.value(
-        value: GetIdeas(IdeaRepositoryImpl(MockIdeaDataSource())),
+        value: GetIdeas(IdeaRepositoryImpl(FakeIdeaDataSource())),
       ),
       Provider<ApplicantsViewModel Function(String, User?)>.value(
         value: applicantsViewModelFactory(seededDatabase()),
@@ -69,7 +69,7 @@ void main() {
     tester,
   ) async {
     const owner = User(
-      id: MockIdeaDataSource.demoCreatorId,
+      id: FakeIdeaDataSource.demoCreatorId,
       name: 'Carlos Eduardo',
       email: 'carlos@uni.edu',
     );

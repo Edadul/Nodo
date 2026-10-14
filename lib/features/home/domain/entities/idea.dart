@@ -1,3 +1,5 @@
+import '../../../projects/domain/entities/project_status.dart';
+
 /// Entidad de dominio: sin dependencias de Flutter/UI.
 class Idea {
   const Idea({
@@ -12,6 +14,7 @@ class Idea {
     this.recordId = '',
     this.creatorId = '',
     this.createdAt,
+    this.status = ProjectStatus.idea,
   });
 
   /// `projects.id` (UUID del schema), el que referencian las FKs.
@@ -33,6 +36,7 @@ class Idea {
   /// Id del creador (FK → `users.id`).
   final String creatorId;
   final DateTime? createdAt;
+  final ProjectStatus status;
 
   /// Colores ARGB del gradiente (presentación los convierte a [Color]).
   final List<int> gradientColors;
@@ -49,12 +53,17 @@ class Idea {
 
   String get spotsLabel => '$filledSpots de $totalSpots cupos';
 
-  Idea copyWith({int? filledSpots}) {
+  Idea copyWith({
+    String? title,
+    String? description,
+    int? filledSpots,
+    ProjectStatus? status,
+  }) {
     return Idea(
       id: id,
       recordId: recordId,
-      title: title,
-      description: description,
+      title: title ?? this.title,
+      description: description ?? this.description,
       categories: categories,
       skills: skills,
       filledSpots: filledSpots ?? this.filledSpots,
@@ -62,6 +71,7 @@ class Idea {
       gradientColors: gradientColors,
       creatorId: creatorId,
       createdAt: createdAt,
+      status: status ?? this.status,
     );
   }
 }

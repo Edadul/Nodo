@@ -1,4 +1,5 @@
 import '../../../../core/db/row_parsing.dart';
+import '../../../projects/domain/entities/project_status.dart';
 import '../../domain/entities/idea.dart';
 
 /// Convierte filas de `projects` en [Idea]. Compartido por los datasources que
@@ -28,6 +29,7 @@ abstract final class ProjectRowMapper {
       totalSpots: RowParsing.integer(row['total_spots'], fallback: 1),
       creatorId: RowParsing.text(row['creator_id']) ?? '',
       createdAt: RowParsing.dateTime(row['created_at']),
+      status: ProjectStatus.fromStorage(RowParsing.text(row['status'])),
       gradientColors: RowParsing.colors(row['gradient_colors']) ??
           defaultGradients[id.hashCode.abs() % defaultGradients.length],
     );

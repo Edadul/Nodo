@@ -11,11 +11,10 @@ class Roble implements IDatabase {
     ),
   );
 
+  /// La sesión real la abre [AuthRepository.restoreOrGuest].
+  /// Aquí solo se asegura que el cliente exista.
   Future<void> init() async {
-    await robleDatabase.login(
-      email: Env.guestEmail,
-      password: Env.guestPassword,
-    );
+    // no-op: bootstrap de auth ocurre en AuthViewModel.bootstrap()
   }
 
   @override
