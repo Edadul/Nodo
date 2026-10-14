@@ -48,4 +48,10 @@ app.*.map.json
 .widget_preview/
 
 .env
+.env.*
+!.env.example
 env.g.dart
+*.pem
+*.p12
+credentials.json
+secrets/
