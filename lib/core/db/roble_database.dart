@@ -22,6 +22,10 @@ class Roble implements IDatabase {
     String tableName, {
     Map<String, dynamic>? filters,
   }) {
+    // Sin sesión (ni guest ni anónimo): lee tablas públicas.
+    if (!robleDatabase.isLoggedIn) {
+      return robleDatabase.publicRead(tableName, filters: filters);
+    }
     return robleDatabase.read(tableName, filters: filters);
   }
 
