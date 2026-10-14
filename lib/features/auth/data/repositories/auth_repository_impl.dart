@@ -53,14 +53,21 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> signInAsGuest() async {
-    if (!Env.hasGuestCredentials) return;
+    if (Env.hasGuestCredentials) {
+      try {
+        await roble.login(
+          email: Env.guestEmail,
+          password: Env.guestPassword,
+        );
+        return;
+      } catch (_) {
+        // Si falla el guest configurado, intenta sesión anónima de Roble.
+      }
+    }
     try {
-      await roble.login(
-        email: Env.guestEmail,
-        password: Env.guestPassword,
-      );
+      await roble.signInAnonymously();
     } catch (_) {
-      // Sin sesión pública si el invitado no está disponible.
+      // Sin sesión pública si Roble no permite anónimos.
     }
   }
 
@@ -98,7 +105,10 @@ class AuthRepositoryImpl implements AuthRepository {
           : (profile.email.isNotEmpty ? profile.email : 'Usuario'),
       email: profile.email,
       avatarUrl: _text(extra['avatar']) ?? _text(userMap['avatar']) ?? '',
-      isGuest: profile.email == Env.guestEmail || profile.role == 'readonly',
+      isGuest: profile.email == Env.guestEmail ||
+          profile.role == 'readonly' ||
+          profile.role == 'anonymous' ||
+          profile.email.isEmpty,
     );
   }
 
