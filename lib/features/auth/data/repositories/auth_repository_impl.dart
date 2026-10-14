@@ -89,8 +89,21 @@ class AuthRepositoryImpl implements AuthRepository {
         return currentUser();
       }
     } catch (_) {
-      // Continúa con invitado.
+      // Continúa con invitado / auto-login.
     }
+
+    if (Env.hasAutoLogin) {
+      try {
+        final userMap = await roble.login(
+          email: Env.autoLoginEmail,
+          password: Env.autoLoginPassword,
+        );
+        return _mapUser(userMap);
+      } catch (_) {
+        // Sigue con sesión pública.
+      }
+    }
+
     await signInAsGuest();
     return currentUser();
   }

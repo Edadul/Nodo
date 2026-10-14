@@ -30,13 +30,18 @@ foreach ($key in @('BASE_URL', 'CONTRACT_ID', 'GUEST_EMAIL')) {
   }
 }
 
-# GUEST_PASSWORD es opcional: si falta, la app usa signInAnonymously().
+# GUEST_PASSWORD / AUTO_LOGIN_* son opcionales.
 if (-not $defines.ContainsKey('GUEST_PASSWORD')) {
   $defines['GUEST_PASSWORD'] = ''
 }
 
-$dartDefines = $defines.GetEnumerator() | ForEach-Object {
-  "--dart-define=$($_.Key)=$($_.Value)"
+$dartDefines = @()
+foreach ($key in $defines.Keys) {
+  $value = $defines[$key]
+  if ([string]::IsNullOrWhiteSpace($value) -and $key -ne 'GUEST_PASSWORD') {
+    continue
+  }
+  $dartDefines += "--dart-define=$key=$value"
 }
 
 $guestHint = if ([string]::IsNullOrWhiteSpace($defines['GUEST_PASSWORD'])) {
