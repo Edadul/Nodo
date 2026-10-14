@@ -13,14 +13,30 @@ class ApiIdeaDataSource implements IdeaDataSource {
 
   static const allCategories = 'TODAS';
 
+  Future<List<Map<String, dynamic>>> _safeRead(String table) async {
+    try {
+      return await _database.read(table);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<Map<String, String>> _safeCatalog(CatalogTable table) async {
+    try {
+      return await _catalog.readAll(table);
+    } catch (_) {
+      return const {};
+    }
+  }
+
   @override
   Future<List<Idea>> fetchIdeas({String? category}) async {
     final results = await Future.wait([
-      _database.read('projects'),
-      _catalog.readAll(CatalogTable.categories),
-      _database.read('project_categories'),
-      _catalog.readAll(CatalogTable.skills),
-      _database.read('project_skills'),
+      _safeRead('projects'),
+      _safeCatalog(CatalogTable.categories),
+      _safeRead('project_categories'),
+      _safeCatalog(CatalogTable.skills),
+      _safeRead('project_skills'),
     ]);
     final projects = results[0] as List<Map<String, dynamic>>;
     final categoryNames = results[1] as Map<String, String>;
@@ -56,7 +72,7 @@ class ApiIdeaDataSource implements IdeaDataSource {
 
   @override
   Future<List<String>> fetchCategories() async {
-    final names = (await _catalog.readAll(CatalogTable.categories))
+    final names = (await _safeCatalog(CatalogTable.categories))
         .values
         .toSet()
         .toList()
