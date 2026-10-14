@@ -35,6 +35,21 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User> register({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    current = User(
+      id: 'u1',
+      name: name,
+      email: email,
+      avatarUrl: '',
+    );
+    return current!;
+  }
+
+  @override
   Future<void> logout() async {
     logoutCalls++;
     current = null;
@@ -47,6 +62,13 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<User?> currentUser() async => current;
+
+  @override
+  Future<User?> restoreOrGuest() async {
+    if (current != null) return current;
+    await signInAsGuest();
+    return current;
+  }
 }
 
 void main() {

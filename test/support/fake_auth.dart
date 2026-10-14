@@ -16,10 +16,27 @@ class SessionAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User> register({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    current = User(id: 'u-reg', name: name, email: email);
+    return current!;
+  }
+
+  @override
   Future<void> logout() async => current = null;
 
   @override
   Future<void> signInAsGuest() async => current = null;
+
+  @override
+  Future<User?> restoreOrGuest() async {
+    if (current != null) return current;
+    await signInAsGuest();
+    return current;
+  }
 }
 
 /// [AuthViewModel] con la sesión de [user] ya cargada.
