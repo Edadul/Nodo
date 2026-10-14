@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/db/db_interface.dart';
@@ -141,13 +140,21 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Future<void> _openAdminDetail(Idea idea) async {
-    await Navigator.push(
+    final updated = await Navigator.push<Idea>(
       context,
       MaterialPageRoute(
         builder: (_) => ProjectDetailAdminScreen(idea: idea),
       ),
     );
-    if (mounted) _loadMyProjects();
+    if (!mounted) return;
+    if (updated != null) {
+      setState(() {
+        _myProjects = [
+          for (final p in _myProjects) p.id == updated.id ? updated : p,
+        ];
+      });
+    }
+    await _loadMyProjects();
   }
 
   Future<void> _openApplicants(Idea idea) async {
@@ -204,7 +211,7 @@ class _ProfileViewState extends State<ProfileView> {
           ),
         ),
         title: const Text(
-          'Mi Perfil',
+          'Mi perfil',
           style: TextStyle(
             color: NodoColors.textPrimary,
             fontSize: 18,
@@ -212,24 +219,12 @@ class _ProfileViewState extends State<ProfileView> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Ajustes',
-            onPressed: () => setState(() => _selectedTab = 1),
-            icon: const Icon(
-              Icons.settings_outlined,
-              color: NodoColors.textPrimary,
-            ),
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         children: [
           _buildProfileHeader(profile),
-          const SizedBox(height: 20),
-          _buildStatsRow(profile),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildActionButtons(),
           const SizedBox(height: 20),
           _buildTabSelector(),
@@ -244,53 +239,43 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildProfileHeader(dynamic profile) {
+  Widget _buildProfileHeader(Profile profile) {
+    final email = _auth?.signedInUser?.email ?? '';
+    final bio = profile.bio.trim();
+    final showBio =
+        bio.isNotEmpty && bio.toLowerCase() != profile.name.toLowerCase();
+
     return Center(
       child: Column(
         children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [NodoColors.primarySoft, NodoColors.primary],
-                  ),
+          GestureDetector(
+            onTap: _isPublicSession ? null : _editProfile,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [NodoColors.primarySoft, NodoColors.primary],
                 ),
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: NodoColors.primaryMuted,
-                  child: ClipOval(
-                    child: Image.network(
-                      profile.avatar,
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.person_rounded,
-                        size: 55,
-                        color: NodoColors.primary,
-                      ),
+              ),
+              child: CircleAvatar(
+                radius: 48,
+                backgroundColor: NodoColors.primaryMuted,
+                child: ClipOval(
+                  child: Image.network(
+                    profile.avatar,
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.person_rounded,
+                      size: 52,
+                      color: NodoColors.primary,
                     ),
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: NodoColors.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2.5),
-                ),
-                child: const Icon(
-                  Icons.edit,
-                  size: 14,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 14),
           Text(
@@ -301,82 +286,44 @@ class _ProfileViewState extends State<ProfileView> {
               color: NodoColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${profile.username} • Creador de Proyectos',
-            style: const TextStyle(
-              fontSize: 13,
-              color: NodoColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: NodoColors.primaryMuted.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              profile.bio,
+          if (email.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              email,
               style: const TextStyle(
-                color: NodoColors.primaryDark,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: NodoColors.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
+          ],
+          if (!_isLoadingProjects && !_isPublicSession) ...[
+            const SizedBox(height: 8),
+            Text(
+              _myProjects.length == 1
+                  ? '1 proyecto propio'
+                  : '${_myProjects.length} proyectos propios',
+              style: const TextStyle(
+                fontSize: 13,
+                color: NodoColors.primaryDark,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (showBio) ...[
+            const SizedBox(height: 10),
+            Text(
+              bio,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: NodoColors.textSecondary,
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ],
         ],
       ),
-    );
-  }
-
-  Widget _buildStatsRow(Profile profile) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      decoration: BoxDecoration(
-        color: NodoColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: NodoColors.chipBorder.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // «Proyectos» es el recuento real de las ideas del usuario que ya
-          // calculamos en `_loadMyProjects` (filtradas por creator_id), no la
-          // columna estática posts_count de `users` (que suele venir a 0).
-          _buildStatColumn('${_myProjects.length}', 'Proyectos'),
-          Container(height: 28, width: 1, color: NodoColors.chipBorder),
-          _buildStatColumn('${profile.followers}', 'Postulaciones'),
-          Container(height: 28, width: 1, color: NodoColors.chipBorder),
-          _buildStatColumn('${profile.favorites}', 'Colaboraciones'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatColumn(String count, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          count,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: NodoColors.primaryDark,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: NodoColors.textSecondary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 
@@ -461,18 +408,6 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
-  Future<void> _shareProfile() async {
-    final profile = _profile;
-    final text = profile == null
-        ? 'Mira Nodo: conecta con proyectos del campus'
-        : 'Perfil de ${profile.name} (${profile.username}) en Nodo';
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Texto de perfil copiado')),
-    );
-  }
-
   void _showInfoSheet({
     required String title,
     required String body,
@@ -514,7 +449,7 @@ class _ProfileViewState extends State<ProfileView> {
                     style: FilledButton.styleFrom(
                       backgroundColor: NodoColors.primary,
                     ),
-                    child: const Text('Cerrar'),
+                    child: const Text('Entendido'),
                   ),
                 ),
               ],
@@ -526,95 +461,51 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Widget _buildActionButtons() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton.tonal(
-                onPressed: _isPublicSession ? null : _editProfile,
-                style: FilledButton.styleFrom(
-                  backgroundColor: NodoColors.primaryMuted,
-                  foregroundColor: NodoColors.primaryDark,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text(
-                  'Editar Perfil',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
+    if (_isPublicSession) {
+      return SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: NodoColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _shareProfile,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: NodoColors.textPrimary,
-                  side: const BorderSide(color: NodoColors.chipBorder),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text(
-                  'Compartir',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          icon: const Icon(Icons.login_rounded, size: 18),
+          label: const Text(
+            'Iniciar sesión',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
-        const SizedBox(height: 12),
-        if (_isPublicSession) ...[
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: NodoColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              icon: const Icon(Icons.login_rounded, size: 18),
-              label: const Text(
-                'Iniciar sesión',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _editProfile,
+        icon: const Icon(Icons.edit_outlined, size: 18),
+        label: const Text(
+          'Editar perfil',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: NodoColors.textPrimary,
+          side: const BorderSide(color: NodoColors.chipBorder),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ] else ...[
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _logout,
-              style: FilledButton.styleFrom(
-                backgroundColor: NodoColors.primaryMuted,
-                foregroundColor: NodoColors.primaryDark,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              icon: const Icon(Icons.logout_rounded, size: 18),
-              label: const Text(
-                'Cerrar sesión',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
-      ],
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
     );
   }
 
@@ -628,10 +519,10 @@ class _ProfileViewState extends State<ProfileView> {
       child: Row(
         children: [
           Expanded(
-            child: _tabButton('Mis Proyectos', 0),
+            child: _tabButton('Mis proyectos', 0),
           ),
           Expanded(
-            child: _tabButton('Preferencias', 1),
+            child: _tabButton('Cuenta', 1),
           ),
         ],
       ),
@@ -869,15 +760,16 @@ class _ProfileViewState extends State<ProfileView> {
                       color: NodoColors.textSecondary,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      idea.spotsLabel,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: NodoColors.textSecondary,
+                    Expanded(
+                      child: Text(
+                        idea.spotsLabel,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: NodoColors.textSecondary,
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     TextButton.icon(
                       onPressed: () => _openApplicants(idea),
                       icon: const Icon(
@@ -898,25 +790,6 @@ class _ProfileViewState extends State<ProfileView> {
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    FilledButton(
-                      onPressed: () => _openAdminDetail(idea),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: NodoColors.primary,
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Admin',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -928,89 +801,84 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Widget _buildSettingsSection() {
-    final email = _auth?.signedInUser?.email ?? 'Sesión pública';
-    return Card(
-      elevation: 0,
-      color: NodoColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: NodoColors.chipBorder.withValues(alpha: 0.6),
-        ),
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(
-              Icons.security_rounded,
-              color: NodoColors.textPrimary,
-            ),
-            title: const Text('Seguridad de la Cuenta'),
-            subtitle: Text(email),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showInfoSheet(
-              title: 'Seguridad',
-              body:
-                  'Tu sesión está asociada a $email. Si alguien más usa este dispositivo, cierra sesión desde el botón de abajo en tu perfil.',
+    return Column(
+      children: [
+        Card(
+          elevation: 0,
+          color: NodoColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(
+              color: NodoColors.chipBorder.withValues(alpha: 0.6),
             ),
           ),
-          const Divider(height: 1, indent: 56),
-          SwitchListTile(
-            secondary: const Icon(
-              Icons.notifications_active_rounded,
-              color: NodoColors.textPrimary,
-            ),
-            title: const Text('Notificaciones de Postulaciones'),
-            subtitle: Text(
-              _notificationsEnabled
-                  ? 'Recibirás avisos de nuevas postulaciones'
-                  : 'Notificaciones pausadas en este dispositivo',
-            ),
-            value: _notificationsEnabled,
-            onChanged: (value) {
-              setState(() => _notificationsEnabled = value);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    value
-                        ? 'Notificaciones activadas'
-                        : 'Notificaciones desactivadas',
-                  ),
+          child: Column(
+            children: [
+              SwitchListTile(
+                secondary: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: NodoColors.textPrimary,
                 ),
-              );
-            },
+                title: const Text('Avisos de postulaciones'),
+                subtitle: Text(
+                  _notificationsEnabled
+                      ? 'Activos en este dispositivo'
+                      : 'Pausados en este dispositivo',
+                ),
+                value: _notificationsEnabled,
+                onChanged: (value) {
+                  setState(() => _notificationsEnabled = value);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        value
+                            ? 'Notificaciones activadas'
+                            : 'Notificaciones desactivadas',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1, indent: 56),
+              ListTile(
+                leading: const Icon(
+                  Icons.help_outline_rounded,
+                  color: NodoColors.textPrimary,
+                ),
+                title: const Text('Cómo usar Nodo'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showInfoSheet(
+                  title: 'Cómo usar Nodo',
+                  body:
+                      'Explora proyectos en el feed, postúlate desde el detalle y gestiona los tuyos aquí: revisa postulaciones, cambia el estado y publica avances para el equipo.',
+                ),
+              ),
+            ],
           ),
-          const Divider(height: 1, indent: 56),
-          ListTile(
-            leading: const Icon(
-              Icons.palette_rounded,
-              color: NodoColors.textPrimary,
-            ),
-            title: const Text('Tema y Apariencia'),
-            subtitle: const Text('Claro · Material 3'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showInfoSheet(
-              title: 'Tema y apariencia',
-              body:
-                  'Nodo usa el tema claro de la marca. El modo oscuro llegará en una próxima versión.',
-            ),
-          ),
-          const Divider(height: 1, indent: 56),
-          ListTile(
-            leading: const Icon(
-              Icons.help_outline_rounded,
-              color: NodoColors.textPrimary,
-            ),
-            title: const Text('Ayuda y Soporte'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showInfoSheet(
-              title: 'Ayuda y soporte',
-              body:
-                  'Explora proyectos en el feed, postúlate desde el detalle y administra tus ideas desde Mi perfil. Si algo falla con Roble, pide al admin del contrato revisar tablas públicas y tu rol.',
+        ),
+        if (!_isPublicSession) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: const Text(
+                'Cerrar sesión',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: NodoColors.primaryDark,
+                side: const BorderSide(color: NodoColors.chipBorder),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }

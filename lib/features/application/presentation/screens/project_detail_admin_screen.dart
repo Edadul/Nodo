@@ -7,8 +7,6 @@ import '../../../home/domain/entities/idea.dart';
 import '../../../projects/domain/entities/project_status.dart';
 import '../../../projects/domain/usecases/update_project_details.dart';
 import '../../../projects/domain/usecases/update_project_status.dart';
-import '../../../projects/presentation/widgets/project_status_badge.dart';
-
 class ProjectDetailAdminScreen extends StatefulWidget {
   const ProjectDetailAdminScreen({super.key, required this.idea});
 
@@ -160,62 +158,69 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: NodoColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(context),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildStageSelector(),
-                          if (_savingStatus) ...[
-                            const SizedBox(height: 8),
-                            const LinearProgressIndicator(minHeight: 2),
-                          ],
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              ProjectStatusBadge(status: _idea.status),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _idea.status.subtitle,
-                                  style: const TextStyle(
-                                    color: NodoColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _idea);
+      },
+      child: Scaffold(
+        backgroundColor: NodoColors.background,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(context),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Estado del proyecto',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: NodoColors.textSecondary,
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildStageSelector(),
+                            if (_savingStatus) ...[
+                              const SizedBox(height: 8),
+                              const LinearProgressIndicator(minHeight: 2),
                             ],
-                          ),
-                          const SizedBox(height: 20),
-                          _buildProjectInfo(),
-                          const SizedBox(height: 24),
-                          _buildApplicantsAdminCard(),
-                          const SizedBox(height: 16),
-                          _buildTeamAdminCard(),
-                          const SizedBox(height: 24),
-                          _buildSkillsSection(),
-                        ],
+                            const SizedBox(height: 8),
+                            Text(
+                              _idea.status.subtitle,
+                              style: const TextStyle(
+                                color: NodoColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildProjectInfo(),
+                            const SizedBox(height: 24),
+                            _buildTeamAdminCard(),
+                            const SizedBox(height: 24),
+                            _buildSkillsSection(),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _buildBottomAdminBar(context),
-          ],
+              _buildBottomAdminBar(context),
+            ],
+          ),
         ),
       ),
     );
@@ -379,62 +384,6 @@ class _ProjectDetailAdminScreenState extends State<ProjectDetailAdminScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildApplicantsAdminCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: NodoColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: NodoColors.chipBorder.withValues(alpha: 0.6)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.mark_email_unread_rounded, color: NodoColors.primary),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Postulaciones',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Revisa y decide sobre los candidatos',
-            style: TextStyle(color: NodoColors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _navigateToApplicants,
-              icon: const Icon(Icons.people_alt_outlined, size: 18),
-              label: const Text(
-                'Ver Postulaciones',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: NodoColors.primary,
-                side: const BorderSide(color: NodoColors.primary),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

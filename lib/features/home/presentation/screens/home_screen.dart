@@ -221,7 +221,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = _viewModel;
-    final bool showProfileIcon = _auth?.isPublicSession == false;
 
     return Scaffold(
       backgroundColor: NodoColors.background,
@@ -240,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Únete',
+                          'Nodo',
                           style: TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w800,
@@ -250,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 6),
                         Text(
-                          'Explora ideas en crecimiento o siembra la tuya',
+                          'Proyectos del campus para unirte o crear el tuyo',
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.35,
@@ -268,22 +267,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: NodoColors.textPrimary,
                     ),
                   ),
-                  if (showProfileIcon)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, right: 4),
-                      child: GestureDetector(
-                        onTap: _openProfileOrLogin,
-                        child: const CircleAvatar(
-                          radius: 18,
-                          backgroundColor: NodoColors.primaryMuted,
-                          child: Icon(
-                            Icons.person_rounded,
-                            size: 20,
-                            color: NodoColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -379,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             Text(
               vm.searchQuery.isEmpty
-                  ? 'No hay ideas en esta categoría'
+                  ? 'Aún no hay proyectos aquí.\nCrea uno con el botón + o cambia de categoría.'
                   : 'Sin resultados para “${vm.searchQuery.trim()}”',
               textAlign: TextAlign.center,
               style: const TextStyle(color: NodoColors.textSecondary),

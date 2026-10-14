@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Accede con tu cuenta específica',
+                    'Entra para postularte o crear proyectos',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,

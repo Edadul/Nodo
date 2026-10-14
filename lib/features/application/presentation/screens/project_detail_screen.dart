@@ -348,14 +348,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
     if (idea.isCreatedBy(user.id)) {
       return _actionButton(
-        label: 'Administrar proyecto',
-        icon: Icons.shield_outlined,
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProjectDetailAdminScreen(idea: idea),
-          ),
-        ),
+        label: 'Gestionar equipo y estado',
+        icon: Icons.tune_rounded,
+        onPressed: () async {
+          final updated = await Navigator.push<Idea>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProjectDetailAdminScreen(idea: idea),
+            ),
+          );
+          if (!mounted || updated == null) return;
+          setState(() {
+            _idea = updated;
+            _loadUpdates();
+          });
+        },
       );
     }
 
