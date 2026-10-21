@@ -114,6 +114,29 @@ void main() {
     expect(find.text('Unidos'), findsOneWidget);
   });
 
+  testWidgets('ProfileView permite editar el nombre sin errores de render', (
+    tester,
+  ) async {
+    const owner = User(
+      id: FakeIdeaDataSource.demoCreatorId,
+      name: 'Carlos Eduardo',
+      email: 'carlos@uni.edu',
+    );
+    final auth = await authFor(owner);
+    await tester.pumpWidget(_wrap(const ProfileView(), auth));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Editar perfil'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'Luis Fernando');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Luis Fernando'), findsWidgets);
+    expect(find.text('Perfil actualizado'), findsOneWidget);
+  });
+
   testWidgets('ProfileView en sesión pública no muestra proyectos ajenos', (
     tester,
   ) async {
