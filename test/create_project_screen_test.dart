@@ -107,4 +107,25 @@ void main() {
     expect(created!.skills, ['RIEGO']);
     expect(db.rows('projects'), hasLength(2));
   });
+
+  testWidgets('los botones + y − cambian los cupos', (tester) async {
+    await pump(tester);
+
+    expect(find.text('3 cupos'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('spots-increment')));
+    await tester.pump();
+    expect(find.text('4 cupos'), findsOneWidget);
+
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byKey(const Key('spots-decrement')));
+      await tester.pump();
+    }
+    expect(find.text('1 cupo'), findsOneWidget);
+
+    final decrement = tester.widget<IconButton>(
+      find.byKey(const Key('spots-decrement')),
+    );
+    expect(decrement.onPressed, isNull);
+  });
 }
