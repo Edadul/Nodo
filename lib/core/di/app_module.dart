@@ -219,10 +219,15 @@ class AppModule extends StatelessWidget {
   final Widget child;
   final IDatabase database;
 
+  /// Por defecto la sesión va contra Roble; las pruebas de integración
+  /// inyectan aquí una implementación propia.
+  final AuthRepository? authRepository;
+
   const AppModule({
     super.key,
     required this.child,
     required this.database,
+    this.authRepository,
   });
 
   @override
@@ -237,7 +242,8 @@ class AppModule extends StatelessWidget {
         ...ApplicantsModule.providers,
         ...ProjectUpdatesModule.providers,
         Provider<AuthRepository>(
-          create: (_) => AuthRepositoryImpl(Roble.robleDatabase),
+          create: (_) =>
+              authRepository ?? AuthRepositoryImpl(Roble.robleDatabase),
         ),
         ChangeNotifierProvider<AuthViewModel>(
           create: (context) =>
