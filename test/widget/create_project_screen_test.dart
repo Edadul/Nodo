@@ -101,10 +101,11 @@ void main() {
     await tester.pump();
     expect(find.text('4 cupos'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('spots-decrement')));
-    await tester.tap(find.byKey(const Key('spots-decrement')));
-    await tester.tap(find.byKey(const Key('spots-decrement')));
-    await tester.pump();
+    // Cada toque necesita su pump: el botón captura el valor del último build.
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byKey(const Key('spots-decrement')));
+      await tester.pump();
+    }
     expect(find.text('1 cupo'), findsOneWidget);
 
     final decrement = tester.widget<IconButton>(
