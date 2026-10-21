@@ -96,6 +96,7 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
             const _SectionLabel('Título'),
             const SizedBox(height: 8),
             TextField(
+              key: const Key('project-title'),
               controller: _titleController,
               enabled: !vm.isSubmitting,
               maxLength: ProjectRules.titleMax,
@@ -110,6 +111,7 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
             const _SectionLabel('Descripción'),
             const SizedBox(height: 8),
             TextField(
+              key: const Key('project-description'),
               controller: _descriptionController,
               enabled: !vm.isSubmitting,
               maxLines: 5,
@@ -178,6 +180,7 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
           child: SizedBox(
             width: double.infinity,
             child: FilledButton(
+              key: const Key('project-submit'),
               onPressed: vm.isSubmitting ? null : _submit,
               style: FilledButton.styleFrom(
                 backgroundColor: NodoColors.primary,

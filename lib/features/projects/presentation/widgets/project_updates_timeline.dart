@@ -41,6 +41,7 @@ class ProjectUpdatesTimeline extends StatelessWidget {
       children: [
         for (var i = 0; i < updates.length; i++)
           _TimelineEntry(
+            key: ValueKey('timeline-entry-${updates[i].id}'),
             update: updates[i],
             isFirst: i == 0,
             isLast: i == updates.length - 1,
@@ -52,6 +53,7 @@ class ProjectUpdatesTimeline extends StatelessWidget {
 
 class _TimelineEntry extends StatelessWidget {
   const _TimelineEntry({
+    super.key,
     required this.update,
     required this.isFirst,
     required this.isLast,

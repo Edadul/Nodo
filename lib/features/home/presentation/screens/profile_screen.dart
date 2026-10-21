@@ -591,6 +591,7 @@ class _ProfileViewState extends State<ProfileView> {
   Widget _tabButton(String title, int index) {
     final isSelected = _selectedTab == index;
     return GestureDetector(
+      key: ValueKey('profile-tab-$index'),
       onTap: () {
         setState(() {
           _selectedTab = index;
@@ -694,6 +695,7 @@ class _ProfileViewState extends State<ProfileView> {
     };
 
     return Container(
+      key: ValueKey('joined-project-${idea.id}'),
       decoration: BoxDecoration(
         color: NodoColors.surface,
         borderRadius: BorderRadius.circular(20),
@@ -860,6 +862,7 @@ class _ProfileViewState extends State<ProfileView> {
         idea.gradientColors.map(Color.new).toList(growable: false);
 
     return Container(
+      key: ValueKey('my-project-${idea.id}'),
       decoration: BoxDecoration(
         color: NodoColors.surface,
         borderRadius: BorderRadius.circular(20),

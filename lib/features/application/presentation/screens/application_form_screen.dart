@@ -154,6 +154,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
               const _SectionLabel('Motivación'),
               const SizedBox(height: 8),
               TextFormField(
+                key: const Key('application-motivation'),
                 controller: _motivationController,
                 maxLines: 4,
                 maxLength: ApplicationRules.motivationMax,
@@ -222,6 +223,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
                 children: [
                   Expanded(
                     child: TextField(
+                      key: const Key('application-custom-skill'),
                       controller: _customSkillController,
                       enabled: !isSubmitting,
                       maxLength: CatalogService.nameMaxLength,
@@ -234,6 +236,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
                   ),
                   const SizedBox(width: 10),
                   IconButton.filled(
+                    key: const Key('application-add-skill'),
                     onPressed: isSubmitting ? null : _addCustomSkill,
                     icon: const Icon(Icons.add_rounded),
                     style: IconButton.styleFrom(
@@ -246,6 +249,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
               const _SectionLabel('Experiencia'),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
+                key: const Key('application-experience'),
                 initialValue: _experience,
                 decoration: _inputDecoration(hint: 'Selecciona tu nivel'),
                 isExpanded: true,
@@ -283,6 +287,7 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
           child: SizedBox(
             width: double.infinity,
             child: FilledButton(
+              key: const Key('application-submit'),
               onPressed: isSubmitting ? null : _submit,
               style: FilledButton.styleFrom(
                 backgroundColor: NodoColors.primary,

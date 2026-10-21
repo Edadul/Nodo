@@ -96,6 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 28),
                   _field(
+                    key: const Key('login-email'),
                     controller: _emailCtrl,
                     label: 'Correo electrónico',
                     keyboard: TextInputType.emailAddress,
@@ -103,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 14),
                   _field(
+                    key: const Key('login-password'),
                     controller: _passCtrl,
                     label: 'Contraseña',
                     obscure: true,
@@ -112,6 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
+                      key: const Key('login-submit'),
                       onPressed: vm.isLoading
                           ? null
                           : () => _submit(context, vm),
@@ -182,6 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _field({
+    Key? key,
     required TextEditingController controller,
     required String label,
     TextInputType? keyboard,
@@ -189,6 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required void Function(String) onChanged,
   }) {
     return TextField(
+      key: key,
       controller: controller,
       keyboardType: keyboard,
       obscureText: obscure,

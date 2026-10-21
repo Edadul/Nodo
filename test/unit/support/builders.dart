@@ -63,6 +63,7 @@ Application buildApplication({
 Applicant buildApplicant({
   String id = 'application-1',
   String recordId = 'rec-application-1',
+  String name = 'Ana',
   ApplicantStatus status = ApplicantStatus.pending,
 }) {
   return Applicant(
@@ -70,7 +71,7 @@ Applicant buildApplicant({
     recordId: recordId,
     projectId: 'project-1',
     applicantId: 'user-1',
-    name: 'Ana',
+    name: name,
     program: 'Ingeniería de Sistemas',
     university: 'Universidad del Norte',
     motivation: 'Quiero aportar',

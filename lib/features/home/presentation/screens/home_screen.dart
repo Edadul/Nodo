@@ -383,6 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, index) {
           final idea = vm.ideas[index];
           return IdeaCard(
+            key: ValueKey('idea-card-${idea.id}'),
             idea: idea,
             onTap: () async {
               await Navigator.push(

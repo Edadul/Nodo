@@ -227,6 +227,7 @@ class _ApplicantsListScreenState extends State<ApplicantsListScreen> {
         final applicant = applicants[index];
         final busy = vm.isUpdating(applicant.id);
         return ApplicantCard(
+          key: ValueKey('applicant-card-${applicant.id}'),
           applicant: applicant,
           onTap: () => _openDetail(applicant),
           onAccept: busy || vm.isFull
