@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:roble/roble.dart';
 
 import '../../env/env.dart';
@@ -13,6 +14,12 @@ class Roble implements IDatabase {
     }
     return db;
   }
+
+  /// Sustituye el cliente de Roble por un doble de prueba (o lo limpia con
+  /// null) sin pasar por [Env].
+  @visibleForTesting
+  static set robleDatabaseForTesting(RobleApiDataBase? db) =>
+      _robleDatabase = db;
 
   /// Debe llamarse una vez en [main] tras [Env.load].
   static void configure() {
