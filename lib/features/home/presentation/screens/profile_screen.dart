@@ -393,45 +393,14 @@ class _ProfileViewState extends State<ProfileView> {
     final profile = _profile;
     if (profile == null) return;
 
-    final nameCtrl = TextEditingController(text: profile.name);
-    final bioCtrl = TextEditingController(text: profile.bio);
-    final saved = await showDialog<bool>(
+    final edited = await showDialog<({String name, String bio})>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar perfil'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: bioCtrl,
-              decoration: const InputDecoration(labelText: 'Bio'),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
+      builder: (_) => _EditProfileDialog(name: profile.name, bio: profile.bio),
     );
-
-    final name = nameCtrl.text.trim();
-    final bio = bioCtrl.text.trim();
-    nameCtrl.dispose();
-    bioCtrl.dispose();
-    if (saved != true || !mounted || name.isEmpty) return;
+    if (edited == null || !mounted) return;
+    final name = edited.name.trim();
+    final bio = edited.bio.trim();
+    if (name.isEmpty) return;
 
     final userId = _auth?.signedInUser?.id;
     if (userId != null) {
@@ -1128,6 +1097,68 @@ class _ProfileViewState extends State<ProfileView> {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Diálogo de edición del perfil. Es dueño de sus controllers y los libera en
+/// [State.dispose], cuando la animación de cierre ya terminó: liberarlos al
+/// volver de `showDialog` rompe los TextField que aún se están pintando.
+class _EditProfileDialog extends StatefulWidget {
+  const _EditProfileDialog({required this.name, required this.bio});
+
+  final String name;
+  final String bio;
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late final TextEditingController _nameCtrl =
+      TextEditingController(text: widget.name);
+  late final TextEditingController _bioCtrl =
+      TextEditingController(text: widget.bio);
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _bioCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Editar perfil'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameCtrl,
+            decoration: const InputDecoration(labelText: 'Nombre'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _bioCtrl,
+            decoration: const InputDecoration(labelText: 'Bio'),
+            maxLines: 2,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            (name: _nameCtrl.text, bio: _bioCtrl.text),
+          ),
+          child: const Text('Guardar'),
+        ),
       ],
     );
   }
